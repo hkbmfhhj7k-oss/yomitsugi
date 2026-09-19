@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.7.2 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.8 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -44,7 +44,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .basicLine{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.7.2</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.8</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -151,6 +151,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 
 <script>
 const KEY='yomitsugi.v1';
+const CURRENT_KEY='yomitsugi.currentWork.v1';
 let books=[]; try{books=JSON.parse(localStorage.getItem(KEY)||'[]')}catch{books=[]}
 let activeFilter='all';
 const $=id=>document.getElementById(id);
@@ -202,7 +203,8 @@ function migrate(){
     readingHistory:Array.isArray(b.readingHistory)?b.readingHistory:[],
     recap:b.recap||'',episodeSummary:b.episodeSummary||'',questions:b.questions||'',
     charactersText:b.charactersText||'',relationsText:b.relationsText||'',eventsText:b.eventsText||'',
-    favoriteLevel:b.favoriteLevel||'',sendToBiblio:!!b.sendToBiblio,favoriteParts:b.favoriteParts||'',customSections:Array.isArray(b.customSections)?b.customSections:[]}
+    favoriteLevel:b.favoriteLevel||'',sendToBiblio:!!b.sendToBiblio,favoriteParts:b.favoriteParts||'',customSections:Array.isArray(b.customSections)?b.customSections:[],
+    textClips:Array.isArray(b.textClips)?b.textClips:[]}
  });
  persist(false);
 }
@@ -333,6 +335,8 @@ window.showWork=id=>{
    <div class="actions">${b.url?`<button onclick="openBook('${b.id}')">続きを読む</button>`:''}<button class="secondary" onclick="editField('${b.id}','progress','読書位置',false)">読書位置 ✎</button></div>
   </section>
 
+  <section class="detailSection"><div class="inlineHead"><h3>拾った本文</h3><span class="tiny">${(b.textClips||[]).length}件</span></div>
+  ${(b.textClips||[]).length?(b.textClips||[]).slice().reverse().map(c=>`<div class="objectCard">${esc(c.text)}<div class="tiny" style="margin-top:6px">${new Date(c.capturedAt).toLocaleString('ja-JP')}</div></div>`).join(''):'<div class="tiny">まだありません</div>'}</section>
   <section class="detailSection" data-section="recap"><div class="inlineHead"><h3>前回まで</h3><button class="miniEdit" onclick="editField('${b.id}','recap','前回まで')">✎</button></div><div>${b.recap?esc(b.recap):'<span class="tiny">まだありません</span>'}</div></section>
   <section class="detailSection" data-section="episodeSummary"><div class="inlineHead"><h3>今回起きたこと</h3><button class="miniEdit" onclick="editField('${b.id}','episodeSummary','今回起きたこと')">✎</button></div><div>${b.episodeSummary?esc(b.episodeSummary):'<span class="tiny">まだありません</span>'}</div></section>
   ${listSection(b.id,'charactersText','登場人物')}
@@ -446,20 +450,63 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.7.2: iOS Shortcut intake bridge.
-// Reuse the app's existing intake/save path so Shortcut input follows the same parser as manual pickup.
+// v0.8: one Shortcut, two jobs.
+// URL-containing input = register/open a work and remember it as the current work.
+// Text-only input = attach the selected text to the remembered current work.
+function rememberCurrentWork(b){
+  if(!b?.id) return;
+  localStorage.setItem(CURRENT_KEY,JSON.stringify({
+    id:b.id, sourceKey:b.sourceKey||'', sourceId:b.sourceId||'', at:new Date().toISOString()
+  }));
+}
+function getCurrentWork(){
+  try{
+    const cur=JSON.parse(localStorage.getItem(CURRENT_KEY)||'null');
+    if(!cur) return null;
+    return books.find(b=>b.id===cur.id || (cur.sourceKey&&b.sourceKey===cur.sourceKey))||null;
+  }catch{return null}
+}
+function saveSharedText(raw){
+  const text=String(raw||'').trim();
+  if(!text) return null;
+  const b=getCurrentWork();
+  if(!b) return null;
+  const now=new Date().toISOString();
+  b.textClips=Array.isArray(b.textClips)?b.textClips:[];
+  // Avoid an accidental immediate duplicate share.
+  const last=b.textClips.at(-1);
+  if(!last || last.text!==text || (Date.now()-new Date(last.capturedAt).getTime())>5000){
+    b.textClips.push({text,capturedAt:now,method:'shortcut-selected-text'});
+  }
+  b.updatedAt=now;
+  b.captures=b.captures||[];
+  b.captures.push({capturedAt:now,method:'selected-text'});
+  persist(false);
+  return b;
+}
 (function shortcutIntakeBridge(){
   const params=new URLSearchParams(location.search);
   const raw=params.get('intake');
   if(!raw) return;
   setTimeout(()=>{
     try{
-      const b=pickup(raw,{silent:true});
+      const parsed=extractIntake(raw);
       history.replaceState(null,'',location.pathname+location.hash);
-      if(!b){ showToast('共有内容からURLを見つけられませんでした'); return; }
-      // pickup() already saves, renders, and handles duplicates.
-      if(!document.getElementById('duplicateDialog')?.open) showWork(b.id);
-      showToast('Yomitsugiに追加したよ');
+      if(parsed.url){
+        const b=pickup(raw,{silent:true});
+        if(!b){showToast('作品を受け取れませんでした');return}
+        rememberCurrentWork(b);
+        if(!document.getElementById('duplicateDialog')?.open) showWork(b.id);
+        showToast('作品を拾ったよ。この作品を読書中として覚えました');
+        return;
+      }
+      const b=saveSharedText(raw);
+      if(!b){
+        showToast('本文は受け取ったけど、保存先の作品がまだありません');
+        return;
+      }
+      showWork(b.id);
+      showToast('選択した本文をこの作品に挟んだよ');
     }catch(e){
       console.error(e);
       showToast('受け取りに失敗しました');

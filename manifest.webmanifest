@@ -1,0 +1,8 @@
+{
+  "name": "Yomitsugi",
+  "short_name": "Yomitsugi",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f7f4ef",
+  "theme_color": "#75678f"
+}

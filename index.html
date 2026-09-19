@@ -3,116 +3,150 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.2 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
-:root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5}
+:root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif}
-main{max-width:760px;margin:auto;padding:20px 16px 100px}.brand{font-family:Georgia,serif;font-size:28px;letter-spacing:.04em}.sub{color:var(--muted);font-size:13px;margin-top:4px}
+main{max-width:780px;margin:auto;padding:20px 16px 100px}.brand{font-family:Georgia,serif;font-size:28px}.sub,.meta,.tiny{color:var(--muted);font-size:12px}
 .panel,.book{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;margin-top:14px;box-shadow:0 4px 20px #594b3910}
-.row{display:flex;gap:10px;align-items:center}.grow{flex:1}input,textarea,select{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;font:inherit}textarea{min-height:90px;resize:vertical}
-button{border:0;border-radius:12px;padding:11px 14px;font-weight:700;background:var(--accent);color:white}button.secondary{background:var(--soft);color:var(--accent)}button.ghost{background:transparent;color:var(--muted);padding:6px}
-label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.title{font-weight:800;font-size:17px}.meta,.tiny{color:var(--muted);font-size:12px}.pill{display:inline-block;background:var(--soft);color:var(--accent);padding:5px 9px;border-radius:999px;font-size:11px;margin-right:5px}
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.empty{text-align:center;color:var(--muted);padding:34px 10px}.hidden{display:none!important}
-dialog{border:0;border-radius:22px;max-width:620px;width:calc(100% - 24px);padding:0;box-shadow:0 20px 70px #0004}dialog::backdrop{background:#0005}.modal{padding:18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.clip{border-left:3px solid var(--line);padding-left:10px;margin:10px 0;white-space:pre-wrap}
-.topActions{display:flex;gap:8px;margin-top:16px}.notice{font-size:12px;background:#fff8dc;border:1px solid #eadfa9;padding:10px;border-radius:12px;margin-top:12px}
-@media(max-width:520px){.grid{grid-template-columns:1fr}.row.stack{align-items:stretch;flex-direction:column}}
+.row{display:flex;gap:10px;align-items:center}.grow{flex:1}.stack{display:flex;gap:10px}
+input,textarea,select{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;font:inherit}textarea{min-height:80px}
+button,.buttonlike{border:0;border-radius:12px;padding:11px 14px;font-weight:700;background:var(--accent);color:#fff;cursor:pointer}
+button.secondary,.buttonlike.secondary{background:var(--soft);color:var(--accent)}button.ghost{background:transparent;color:var(--muted);padding:7px}
+label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.title{font-weight:800;font-size:17px}
+.pill{display:inline-block;background:var(--soft);color:var(--accent);padding:5px 9px;border-radius:999px;font-size:11px;margin:3px 4px 0 0}
+.tag{display:inline-block;border:1px solid var(--line);padding:4px 8px;border-radius:999px;font-size:11px;margin:3px 4px 0 0}
+.actions,.topActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.empty{text-align:center;color:var(--muted);padding:34px 10px}.hidden{display:none!important}
+.notice{font-size:12px;background:var(--warn);border:1px solid #eadfa9;padding:10px;border-radius:12px;margin-top:12px}
+.clip{border-left:3px solid var(--line);padding-left:10px;margin:10px 0;white-space:pre-wrap}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);padding:0;box-shadow:0 20px 70px #0004}dialog::backdrop{background:#0005}.modal{padding:18px}
+.sectionTitle{font-weight:800;margin-top:20px}.count{font-size:11px;color:var(--muted);font-weight:400}
+@media(max-width:540px){.grid{grid-template-columns:1fr}.stack{flex-direction:column;align-items:stretch}}
 </style>
-</head>
-<body><main>
-<div class="brand">Yomitsugi</div>
-<div class="sub">Web小説の「どこまで読んだっけ？」を、雑に残しておく棚。</div>
+</head><body><main>
+<div class="brand">Yomitsugi <span class="tiny">v0.2</span></div>
+<div class="sub">読書を止めずに、未来の自分が探せる痕跡だけ残す。</div>
 
 <section class="panel">
-  <div class="row stack">
-    <input id="quickUrl" class="grow" placeholder="pixiv / 小説家になろう等の作品URLを貼る">
-    <button id="inspectBtn">URLから追加</button>
-  </div>
-  <div class="notice">試作版：URLだけで取得できない情報は、共有されたページタイトル等から推測候補を作ります。本文を勝手に取得・AI送信する処理は入れていません。</div>
+ <div class="stack">
+  <input id="quickUrl" class="grow" placeholder="URLを貼る（共有受付にも対応）">
+  <button id="inspectBtn">受け取る</button>
+ </div>
+ <div class="notice">URLだけでも「未整理」で保存できます。本文を勝手に取得・外部AIへ送信する処理はありません。</div>
+</section>
+
+<section class="panel">
+ <input id="search" placeholder="タイトル・作者・シリーズ・原作・タグ・メモをまとめて検索">
+ <div class="topActions">
+  <button class="secondary" data-filter="all">すべて</button>
+  <button class="secondary" data-filter="読書中">読みかけ</button>
+  <button class="secondary" data-filter="未整理">未整理</button>
+  <button class="secondary" data-filter="読了">読了</button>
+ </div>
 </section>
 
 <div class="topActions">
-  <button class="secondary" id="manualBtn">＋ 手動で追加</button>
-  <button class="secondary" id="exportBtn">データを書き出す</button>
-  <label style="margin:0"><span class="secondary" style="display:inline-block;padding:11px 14px;border-radius:12px;font-weight:700;cursor:pointer">読み込む</span><input id="importFile" type="file" accept="application/json" class="hidden"></label>
+ <button class="secondary" id="manualBtn">＋ 手動で追加</button>
+ <button class="secondary" id="exportBtn">書き出す</button>
+ <label style="margin:0"><span class="buttonlike secondary">読み込む</span><input id="importFile" type="file" accept="application/json" class="hidden"></label>
 </div>
-
 <section id="list"></section>
 
-<dialog id="editor"><form method="dialog" class="modal" id="form">
-  <div class="row"><div class="title grow" id="modalTitle">作品を追加</div><button class="ghost" value="cancel">✕</button></div>
+<dialog id="editor">
+ <form class="modal" id="form" novalidate>
+  <div class="row"><div class="title grow" id="modalTitle">作品を追加</div><button type="button" class="ghost" id="closeBtn">✕</button></div>
   <input id="id" type="hidden">
-  <div class="grid">
-    <div><label>作者</label><input id="author"></div>
-    <div><label>原作</label><input id="fandom" placeholder="二次創作なら作品名など"></div>
-  </div>
+  <div class="grid"><div><label>作者</label><input id="author"></div><div><label>原作</label><input id="fandom"></div></div>
   <div><label>シリーズ名</label><input id="series"></div>
-  <div><label>タイトル</label><input id="title" required></div>
+  <div><label>単話タイトル</label><input id="title" placeholder="未取得でも保存できます"></div>
   <div><label>URL</label><input id="url" type="url"></div>
+  <div><label>取得時タグ</label><input id="tags" placeholder="例：糸師冴, 幼馴染, パロディ"></div>
   <div class="grid">
-    <div><label>読書位置</label><input id="progress" placeholder="例：第18話まで"></div>
-    <div><label>状態</label><select id="status"><option>読書中</option><option>あとで読む</option><option>読了</option><option>保留</option></select></div>
+   <div><label>読書位置</label><input id="progress" placeholder="例：途中 / 第18話まで"></div>
+   <div><label>状態</label><select id="status"><option>読書中</option><option>あとで読む</option><option>読了</option><option>未整理</option><option>保留</option></select></div>
   </div>
-  <div><label>参考文章 / 前回ここ</label><textarea id="clip" placeholder="選択した一文や、次回の自分に残したい断片"></textarea></div>
-  <div><label>一言メモ</label><textarea id="memo" placeholder="AIじゃなくても、これだけ残れば復帰しやすい"></textarea></div>
-  <div class="actions"><button id="saveBtn" value="default">保存</button><button class="secondary" value="cancel">キャンセル</button></div>
-</form></dialog>
-</main>
+  <div><label>参考文章 / 前回ここ</label><textarea id="clip"></textarea></div>
+  <div><label>一言メモ</label><textarea id="memo"></textarea></div>
+  <div class="actions"><button type="submit">保存</button><button type="button" class="secondary" id="cancelBtn">キャンセル</button></div>
+ </form>
+</dialog>
+
 <script>
 const KEY='yomitsugi.v1';
-let books=JSON.parse(localStorage.getItem(KEY)||'[]');
+let books=[];
+try{books=JSON.parse(localStorage.getItem(KEY)||'[]')}catch{books=[]}
+let activeFilter='all';
 const $=id=>document.getElementById(id);
-const esc=s=>(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-function save(){localStorage.setItem(KEY,JSON.stringify(books));render()}
-function daysAgo(iso){if(!iso)return ''; const d=Math.floor((Date.now()-new Date(iso))/86400000);return d<=0?'今日':`${d}日前`}
+const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const tagArray=v=>Array.isArray(v)?v:String(v||'').split(/[,、#\n]+/).map(x=>x.trim()).filter(Boolean);
+function normalizeUrl(raw){try{const u=new URL(String(raw||'').trim());u.hash='';['utm_source','utm_medium','utm_campaign'].forEach(x=>u.searchParams.delete(x));return u.toString()}catch{return String(raw||'').trim()}}
+function migrate(){
+ books=books.map(b=>({...b,tags:tagArray(b.tags),status:b.status||'読書中',capturedAt:b.capturedAt||b.updatedAt||new Date().toISOString()}));
+ persist(false);
+}
+function persist(redraw=true){localStorage.setItem(KEY,JSON.stringify(books));if(redraw)render()}
+function daysAgo(iso){if(!iso)return '';const d=Math.max(0,Math.floor((Date.now()-new Date(iso))/86400000));return d===0?'今日':`${d}日前`}
+function searchable(b){return [b.title,b.author,b.series,b.fandom,...tagArray(b.tags),b.memo,b.clip,b.progress].join(' ').toLowerCase()}
 function render(){
- const list=$('list'); if(!books.length){list.innerHTML='<div class="empty">まだ何もありません。<br>URLをひとつ投げて、この棚を始めよう。</div>';return}
- const sorted=[...books].sort((a,b)=>(b.lastRead||b.updatedAt||'').localeCompare(a.lastRead||a.updatedAt||''));
- list.innerHTML=sorted.map(b=>`<article class="book">
-   <div class="row"><div class="grow"><div class="title">${esc(b.title||'無題')}</div><div class="meta">${esc(b.author||'作者未設定')}${b.series?' ・ '+esc(b.series):''}</div></div><span class="pill">${esc(b.status||'読書中')}</span></div>
-   <div style="margin-top:10px">${b.fandom?`<span class="pill">原作：${esc(b.fandom)}</span>`:''}${b.progress?`<span class="pill">${esc(b.progress)}</span>`:''}</div>
-   ${b.lastRead?`<div class="tiny" style="margin-top:9px">最後に触った日：${daysAgo(b.lastRead)}</div>`:''}
-   ${b.clip?`<div class="clip">${esc(b.clip.length>220?b.clip.slice(0,220)+'…':b.clip)}</div>`:''}
-   ${b.memo?`<div class="tiny">${esc(b.memo)}</div>`:''}
-   <div class="actions">
-    ${b.url?`<button onclick="openBook('${b.id}')">続きを読む</button>`:''}
-    <button class="secondary" onclick="markRead('${b.id}')">ここまで読んだ</button>
-    <button class="secondary" onclick="editBook('${b.id}')">編集</button>
-    <button class="ghost" onclick="removeBook('${b.id}')">削除</button>
-   </div>
- </article>`).join('');
+ const q=$('search').value.trim().toLowerCase();
+ let arr=[...books].filter(b=>(activeFilter==='all'||b.status===activeFilter)&&(!q||searchable(b).includes(q)));
+ arr.sort((a,b)=>(b.lastRead||b.capturedAt||b.updatedAt||'').localeCompare(a.lastRead||a.capturedAt||a.updatedAt||''));
+ if(!arr.length){$('list').innerHTML='<div class="empty">該当する記録はありません。</div>';return}
+ const groups=new Map();
+ for(const b of arr){const k=b.series||'単発・シリーズ未設定';if(!groups.has(k))groups.set(k,[]);groups.get(k).push(b)}
+ $('list').innerHTML=[...groups].map(([series,items])=>`<div class="sectionTitle">${esc(series)} <span class="count">${items.length}話</span></div>`+items.map(b=>`<article class="book">
+  <div class="row"><div class="grow"><div class="title">${esc(b.title||'未整理の作品')}</div><div class="meta">${esc(b.author||'作者未取得')}${b.fandom?' ・ 原作 '+esc(b.fandom):''}</div></div><span class="pill">${esc(b.status)}</span></div>
+  <div>${tagArray(b.tags).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>
+  <div class="tiny" style="margin-top:8px">${b.lastRead?'最後に触った日：'+daysAgo(b.lastRead):'保存：'+daysAgo(b.capturedAt)}</div>
+  ${b.progress?`<div style="margin-top:8px"><span class="pill">${esc(b.progress)}</span></div>`:''}
+  ${b.clip?`<div class="clip">${esc(b.clip.length>180?b.clip.slice(0,180)+'…':b.clip)}</div>`:''}
+  ${b.memo?`<div class="tiny">${esc(b.memo)}</div>`:''}
+  <div class="actions">${b.url?`<button onclick="openBook('${b.id}')">続きを読む</button>`:''}<button class="secondary" onclick="markRead('${b.id}')">ここまで読んだ</button><button class="secondary" onclick="editBook('${b.id}')">編集</button><button class="ghost" onclick="removeBook('${b.id}')">削除</button></div>
+ </article>`).join('')).join('');
 }
 function openEditor(b={}){
  $('modalTitle').textContent=b.id?'作品を編集':'作品を追加';
- ['id','author','fandom','series','title','url','progress','status','clip','memo'].forEach(k=>$(k).value=b[k]|| (k==='status'?'読書中':''));
+ const fields=['id','author','fandom','series','title','url','progress','status','clip','memo'];
+ fields.forEach(k=>$(k).value=b[k]|| (k==='status'?'読書中':''));
+ $('tags').value=tagArray(b.tags).join(', ');
  $('editor').showModal();
 }
-function normalizeUrl(raw){try{const u=new URL(raw);u.hash='';return u.toString()}catch{return raw.trim()}}
-function guessFromUrl(raw){
- const url=normalizeUrl(raw), out={url};
- try{
-  const u=new URL(url);
-  if(u.hostname.includes('pixiv.net')) out.source='pixiv';
-  else if(u.hostname.includes('syosetu.com')) out.source='小説家になろう';
-  else out.source=u.hostname;
-  // URL単独では安全・確実に作者/タイトル等を取れないため、空欄候補にする。
- }catch{}
- return out;
+function closeEditor(){$('editor').close()}
+function incomingData(){
+ const p=new URLSearchParams(location.search);
+ return {url:p.get('url')||p.get('u')||'',title:p.get('title')||'',author:p.get('author')||'',series:p.get('series')||'',fandom:p.get('fandom')||'',tags:p.get('tags')||'',clip:p.get('text')||p.get('clip')||''};
 }
-$('inspectBtn').onclick=()=>{const raw=$('quickUrl').value.trim(); if(!raw)return; const existing=books.find(b=>normalizeUrl(b.url||'')===normalizeUrl(raw)); if(existing)return editBook(existing.id); openEditor(guessFromUrl(raw));}
+function acceptIncoming(data){
+ const raw=normalizeUrl(data.url);
+ if(!raw&&!data.title&&!data.clip)return;
+ const existing=raw&&books.find(b=>normalizeUrl(b.url)===raw);
+ if(existing){openEditor(existing);return}
+ openEditor({...data,url:raw,status:'未整理',capturedAt:new Date().toISOString()});
+}
+$('inspectBtn').onclick=()=>{const raw=$('quickUrl').value.trim();if(!raw)return;acceptIncoming({url:raw})};
 $('manualBtn').onclick=()=>openEditor();
+$('closeBtn').onclick=closeEditor;$('cancelBtn').onclick=closeEditor;
 $('form').addEventListener('submit',e=>{
  e.preventDefault();
- const obj={}; ['id','author','fandom','series','title','url','progress','status','clip','memo'].forEach(k=>obj[k]=$(k).value.trim());
- obj.url=normalizeUrl(obj.url); obj.updatedAt=new Date().toISOString(); if(!obj.id)obj.id=crypto.randomUUID();
- const i=books.findIndex(x=>x.id===obj.id); if(i>=0)obj.lastRead=books[i].lastRead; if(i>=0)books[i]=obj; else books.push(obj);
- save(); $('editor').close(); $('quickUrl').value='';
+ const obj={};['id','author','fandom','series','title','url','progress','status','clip','memo'].forEach(k=>obj[k]=$(k).value.trim());
+ obj.tags=tagArray($('tags').value);obj.url=normalizeUrl(obj.url);obj.updatedAt=new Date().toISOString();
+ if(!obj.title&&!obj.url&&!obj.clip){alert('URL・タイトル・参考文章のどれか1つだけ残してね');return}
+ if(!obj.id)obj.id=crypto.randomUUID();
+ const i=books.findIndex(x=>x.id===obj.id);
+ if(i>=0){obj.lastRead=books[i].lastRead;obj.capturedAt=books[i].capturedAt||obj.updatedAt;books[i]=obj}
+ else{obj.capturedAt=obj.updatedAt;books.push(obj)}
+ persist();closeEditor();$('quickUrl').value='';
 });
+$('search').oninput=render;
+document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{activeFilter=b.dataset.filter;render()});
 window.editBook=id=>openEditor(books.find(b=>b.id===id));
-window.markRead=id=>{const b=books.find(x=>x.id===id); b.lastRead=new Date().toISOString(); b.updatedAt=b.lastRead; save()}
-window.openBook=id=>{const b=books.find(x=>x.id===id); b.lastRead=new Date().toISOString(); save(); window.open(b.url,'_blank','noopener')}
-window.removeBook=id=>{if(confirm('この作品を棚から削除しますか？')){books=books.filter(x=>x.id!==id);save()}}
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:1,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup.json';a.click();URL.revokeObjectURL(a.href)}
-$('importFile').onchange=async e=>{try{const data=JSON.parse(await e.target.files[0].text()); if(!Array.isArray(data.books))throw 0; books=data.books;save()}catch{alert('読み込みできませんでした')}}
-render();
+window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;if(b.status==='未整理')b.status='読書中';persist()};
+window.openBook=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;persist();window.open(b.url,'_blank','noopener')};
+window.removeBook=id=>{if(confirm('この記録を削除しますか？')){books=books.filter(x=>x.id!==id);persist()}};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:2,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v2.json';a.click();a.click;URL.revokeObjectURL(a.href)};
+$('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
+migrate();render();
+const inc=incomingData();if(inc.url||inc.title||inc.clip)acceptIncoming(inc);
 </script></body></html>

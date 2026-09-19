@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.7.1 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.7.2 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -44,7 +44,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .basicLine{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.7.1</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.7.2</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -446,42 +446,19 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.7: iOS Shortcut intake bridge.
-// Shortcut may open:
-//   https://hkbmfhhj7k-oss.github.io/yomitsugi/?intake=<encoded shared text>
-// Shared pixiv text example:
-//   title | author https://www.pixiv.net/novel/show.php?id=...
+// v0.7.2: iOS Shortcut intake bridge.
+// Reuse the app's existing intake/save path so Shortcut input follows the same parser as manual pickup.
 (function shortcutIntakeBridge(){
   const params=new URLSearchParams(location.search);
-  const raw=params.get('intake')||params.get('share');
+  const raw=params.get('intake');
   if(!raw) return;
-  // Existing app query-intake may already have consumed it. sourceKey prevents duplicates.
   setTimeout(()=>{
     try{
-      const parsed=parseSharedInput(raw);
-      const existing=findExisting(parsed);
-      if(existing){
-        history.replaceState(null,'',location.pathname+location.hash);
-        showWork(existing.id);
-        showToast('登録済みの作品だよ');
-        return;
-      }
-      // Reuse the same save path as quick intake where possible.
-      const now=new Date().toISOString();
-      const b=migrateBook({
-        id:uid(), title:parsed.title||'', author:parsed.author||'', url:parsed.url||'',
-        source:parsed.source||guessSource(parsed.url||''), sourceId:parsed.sourceId||'',
-        sourceKey:parsed.sourceKey||'', series:'', fandom:'', tags:[],
-        readingStatus:'読書中', metadataStatus:(parsed.title&&parsed.author)?'ok':'needsReview',
-        progress:'', clip:'', memo:'', capturedAt:now, updatedAt:now, lastRead:'',
-        captures:[{type:'shortcut-share',raw,at:now}],
-        tagSnapshots:[], readingHistory:[], recap:'', episodeSummary:'', questions:'',
-        charactersText:'', relationsText:'', eventsText:'', favoriteLevel:'',
-        sendToBiblio:false, favoriteParts:'', customSections:[]
-      });
-      books.unshift(b);persist(false);
+      const b=pickup(raw,{silent:true});
       history.replaceState(null,'',location.pathname+location.hash);
-      showWork(b.id);
+      if(!b){ showToast('共有内容からURLを見つけられませんでした'); return; }
+      // pickup() already saves, renders, and handles duplicates.
+      if(!document.getElementById('duplicateDialog')?.open) showWork(b.id);
       showToast('Yomitsugiに追加したよ');
     }catch(e){
       console.error(e);

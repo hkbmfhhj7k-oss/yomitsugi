@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.3 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.3.2 TEST — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -22,13 +22,13 @@ label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.title{f
 .clip{border-left:3px solid var(--line);padding-left:10px;margin:10px 0;white-space:pre-wrap}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);padding:0;box-shadow:0 20px 70px #0004}dialog::backdrop{background:#0005}.modal{padding:18px}
 .sectionTitle{font-weight:800;margin-top:20px}.count{font-size:11px;color:var(--muted);font-weight:400}
-.shelf{height:76px;display:flex;align-items:flex-end;gap:3px;padding:8px 8px 2px;margin-top:8px;border-bottom:5px solid #b59a7b;overflow:hidden}
+.shelf{height:76px;display:flex;align-items:flex-end;gap:3px;padding:8px 8px 2px;margin-top:8px;border-bottom:5px solid #b59a7b;overflow-x:auto;overflow-y:hidden}
 .spine{width:13px;border-radius:3px 3px 1px 1px;background:var(--soft);border:1px solid #d8cee4}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#292724;color:#fff;padding:12px 16px;border-radius:999px;font-size:13px;box-shadow:0 8px 30px #0003;z-index:50}
 @media(max-width:540px){.grid{grid-template-columns:1fr}.stack{flex-direction:column;align-items:stretch}}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.3</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.3.2 TEST</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -39,6 +39,10 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
   <button id="pickupBtn">拾う</button>
  </div>
  <div id="intakeNotice" class="notice">URLだけでも保存できます。共有文に「タイトル | 作者 URL」があれば自動で分けます。</div>
+ <div class="actions">
+  <button type="button" class="secondary" id="pixivTestBtn">pixiv情報取得テスト</button>
+ </div>
+ <div id="pixivTestResult" class="notice hidden" style="white-space:pre-wrap;word-break:break-word"></div>
 </section>
 
 <section class="panel">
@@ -81,6 +85,20 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
   <div><label>一言メモ</label><textarea id="memo"></textarea></div>
   <div class="actions"><button type="submit">保存</button><button type="button" class="secondary" id="cancelBtn">キャンセル</button></div>
  </form>
+</dialog>
+
+<dialog id="duplicateDialog">
+ <div class="modal">
+  <div class="row"><div class="title grow">もう拾ってる作品だよ</div><button type="button" class="ghost" id="duplicateClose">✕</button></div>
+  <div class="notice ok">新しく重複登録せず、既存の記録を表示しています。</div>
+  <article class="book" id="duplicatePreview"></article>
+  <div class="actions">
+   <button type="button" id="duplicateContinue">続きを読む</button>
+   <button type="button" class="secondary" id="duplicateEdit">この記録を編集</button>
+   <button type="button" class="secondary" id="duplicateTouch">ここまで読んだ</button>
+   <button type="button" class="ghost" id="duplicateDismiss">閉じる</button>
+  </div>
+ </div>
 </dialog>
 <div id="toast" class="toast hidden"></div>
 
@@ -141,8 +159,7 @@ function searchable(b){return [b.title,b.author,b.series,b.fandom,...tagArray(b.
 function showToast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');clearTimeout(showToast.t);showToast.t=setTimeout(()=>$('toast').classList.add('hidden'),2200)}
 function renderShelf(){
  $('bookCount').textContent=`${books.length}件`;
- const n=Math.min(42,Math.max(3,Math.ceil(Math.sqrt(Math.max(books.length,1))*5)));
- $('shelf').innerHTML=Array.from({length:n},(_,i)=>`<span class="spine" style="height:${28+(i*17%37)}px;transform:rotate(${i%5===0?-2:i%7===0?2:0}deg)"></span>`).join('');
+ $('shelf').innerHTML=books.map((_,i)=>`<span class="spine" title="${i+1}冊目" style="height:${28+(i*17%37)}px;transform:rotate(${i%5===0?-2:i%7===0?2:0}deg);flex:0 0 13px"></span>`).join('');
 }
 function render(){
  renderShelf();
@@ -165,6 +182,22 @@ function render(){
   <div class="actions">${b.url?`<button onclick="openBook('${b.id}')">続きを読む</button>`:''}<button class="secondary" onclick="markRead('${b.id}')">ここまで読んだ</button><button class="secondary" onclick="editBook('${b.id}')">編集</button><button class="ghost" onclick="removeBook('${b.id}')">削除</button></div>
  </article>`).join('')).join('');
 }
+function duplicateCard(b){
+ return `<div class="title">${esc(b.title||'タイトル未取得')}</div>
+ <div class="meta" style="margin-top:4px">${esc(b.author||'作者未取得')}${b.series?' ・ '+esc(b.series):''}${b.fandom?' ・ 原作 '+esc(b.fandom):''}</div>
+ <div style="margin-top:7px">${b.metadataStatus==='needsReview'?'<span class="pill needs">要確認</span>':''}<span class="pill">${esc(b.readingStatus)}</span>${tagArray(b.tags).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>
+ ${b.progress?`<div style="margin-top:8px"><b>読書位置：</b>${esc(b.progress)}</div>`:''}
+ ${b.clip?`<div class="clip">${esc(b.clip.length>220?b.clip.slice(0,220)+'…':b.clip)}</div>`:''}
+ ${b.memo?`<div style="margin-top:8px"><b>メモ：</b>${esc(b.memo)}</div>`:''}
+ <div class="tiny" style="margin-top:10px">${b.lastRead?'最後に触った日：'+daysAgo(b.lastRead):'保存：'+daysAgo(b.capturedAt)}${b.sourceId?' ・ '+esc(b.source)+' ID: '+esc(b.sourceId):''}</div>`;
+}
+let duplicateBookId='';
+function showDuplicate(b){
+ duplicateBookId=b.id;
+ $('duplicatePreview').innerHTML=duplicateCard(b);
+ $('duplicateContinue').classList.toggle('hidden',!b.url);
+ $('duplicateDialog').showModal();
+}
 function findExisting(d){return books.find(b=>(d.sourceKey&&b.sourceKey===d.sourceKey)||(d.url&&normalizeUrl(b.url)===normalizeUrl(d.url)))}
 function pickup(raw,{silent=false}={}){
  const d=extractIntake(raw);
@@ -173,7 +206,7 @@ function pickup(raw,{silent=false}={}){
  if(old){
    old.title=old.title||d.title;old.author=old.author||d.author;old.url=d.url||old.url;
    old.source=d.source||old.source;old.sourceType=d.sourceType||old.sourceType;old.sourceId=d.sourceId||old.sourceId;old.sourceKey=d.sourceKey||old.sourceKey;
-   old.updatedAt=new Date().toISOString();old.metadataStatus=metadataState(old);persist();showToast('すでに拾ってた作品。記録を更新したよ');return old
+   old.updatedAt=new Date().toISOString();old.metadataStatus=metadataState(old);persist();showDuplicate(old);return old
  }
  const now=new Date().toISOString();
  const b={id:crypto.randomUUID(),title:d.title,author:d.author,url:d.url,source:d.source,sourceType:d.sourceType,sourceId:d.sourceId,sourceKey:d.sourceKey,
@@ -186,6 +219,57 @@ function openEditor(b={}){
  $('tags').value=tagArray(b.tags).join(', ');$('editor').showModal();
 }
 function closeEditor(){$('editor').close()}
+$('duplicateClose').onclick=$('duplicateDismiss').onclick=()=> $('duplicateDialog').close();
+$('duplicateEdit').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);$('duplicateDialog').close();if(b)openEditor(b)};
+$('duplicateTouch').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);if(b){b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;persist();$('duplicatePreview').innerHTML=duplicateCard(b);showToast('読書日時を更新したよ')}};
+$('duplicateContinue').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);if(b&&b.url){b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;persist();window.open(b.url,'_blank','noopener')}};
+
+async function testPixivMetadata(){
+ const result=$('pixivTestResult');
+ const parsed=extractIntake($('quickInput').value);
+ result.classList.remove('hidden');
+ if(parsed.source!=='pixiv'||parsed.sourceType!=='novel'||!parsed.sourceId){
+   result.textContent='pixiv小説URLを上の欄に入れてから押してね。';
+   return;
+ }
+ const id=parsed.sourceId;
+ const endpoint=`https://www.pixiv.net/ajax/novel/${encodeURIComponent(id)}`;
+ result.textContent=`確認中…\n作品ID: ${id}\n${endpoint}`;
+ try{
+   const res=await fetch(endpoint,{method:'GET',credentials:'omit',headers:{'Accept':'application/json'}});
+   const type=res.headers.get('content-type')||'';
+   const text=await res.text();
+   let payload=null;
+   try{payload=JSON.parse(text)}catch{}
+   if(!res.ok){
+     result.textContent=`取得失敗\nHTTP: ${res.status} ${res.statusText}\nContent-Type: ${type}\n\n先頭データ:\n${text.slice(0,1000)}`;
+     return;
+   }
+   if(!payload){
+     result.textContent=`HTTP取得は成功したけどJSONではありませんでした。\nHTTP: ${res.status}\nContent-Type: ${type}\n\n先頭データ:\n${text.slice(0,1000)}`;
+     return;
+   }
+   const b=payload.body||payload;
+   const summary={
+     id:b.id||id,
+     title:b.title,
+     userName:b.userName,
+     userId:b.userId,
+     seriesTitle:b.seriesNavData?.title||b.seriesTitle,
+     seriesId:b.seriesNavData?.seriesId||b.seriesId,
+     tags:b.tags?.tags?.map?.(x=>x.tag)||b.tags,
+     description:b.description,
+     createDate:b.createDate,
+     uploadDate:b.uploadDate,
+     wordCount:b.wordCount,
+     bookmarkCount:b.bookmarkCount
+   };
+   result.textContent='取得成功！\n\n'+JSON.stringify(summary,null,2)+'\n\n--- 取得JSONのキー ---\n'+Object.keys(b).join(', ');
+ }catch(err){
+   result.textContent=`ブラウザからの取得に失敗しました。\n\n${err?.name||'Error'}: ${err?.message||String(err)}\n\nこれが CORS / Failed to fetch 系なら、GitHub Pages → pixiv の直接取得は使わず次の経路を検討します。`;
+ }
+}
+$('pixivTestBtn').onclick=testPixivMetadata;
 $('pickupBtn').onclick=()=>{const raw=$('quickInput').value.trim();if(pickup(raw))$('quickInput').value=''};
 $('manualBtn').onclick=()=>openEditor();$('closeBtn').onclick=closeEditor;$('cancelBtn').onclick=closeEditor;
 $('form').addEventListener('submit',e=>{

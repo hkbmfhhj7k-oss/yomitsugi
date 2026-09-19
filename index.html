@@ -35,6 +35,13 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .objectCard{background:var(--bg);border-radius:13px;padding:10px;margin-top:7px;white-space:pre-wrap}
 .fab{position:fixed;right:18px;bottom:22px;border-radius:999px;width:52px;height:52px;font-size:22px;box-shadow:0 8px 24px #0002}
 @media(max-width:540px){.hero h1{font-size:21px}}
+
+.inlineHead{display:flex;align-items:center;gap:8px}.inlineHead h3{flex:1}
+.miniEdit{background:var(--soft)!important;color:var(--accent)!important;padding:5px 8px!important;border-radius:9px;font-size:12px}
+.inlineForm{margin-top:8px}.inlineForm textarea{min-height:90px}
+.itemRow{display:flex;gap:7px;align-items:flex-start}.itemRow .objectCard{flex:1}
+.addRow{margin-top:9px}
+.basicLine{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 </head><body><main>
 <div class="brand">Yomitsugi <span class="tiny">v0.4</span></div>
@@ -244,25 +251,97 @@ function showPage(title,body){
 }
 function splitLines(s){return String(s||'').split(/\n+/).map(x=>x.trim()).filter(Boolean)}
 function objectList(s){return splitLines(s).map(x=>`<div class="objectCard">${esc(x)}</div>`).join('')}
+
+
+function quickField(id,field,label){
+ const b=books.find(x=>x.id===id);if(!b)return;
+ const v=prompt(label,b[field]||'');if(v===null)return;saveWorkField(id,field,v.trim());
+}
+function saveWorkField(id,field,value){
+ const b=books.find(x=>x.id===id);if(!b)return;
+ b[field]=value;b.updatedAt=new Date().toISOString();
+ if(field==='tags')b[field]=tagArray(value);
+ if(['title','author'].includes(field))b.metadataStatus=metadataState(b);
+ persist(false);showWork(id);showToast('保存したよ');
+}
+function editField(id,field,label,multiline=true){
+ const b=books.find(x=>x.id===id);if(!b)return;
+ const current=field==='tags'?tagArray(b[field]).join(', '):(b[field]||'');
+ const box=document.querySelector(`[data-section="${field}"]`);
+ if(!box)return;
+ box.innerHTML=`<div class="inlineHead"><h3>${esc(label)}</h3></div>
+ <div class="inlineForm">${multiline?`<textarea id="inline_${field}">${esc(current)}</textarea>`:`<input id="inline_${field}" value="${esc(current)}">`}
+ <div class="actions"><button onclick="saveInline('${id}','${field}')">保存</button><button class="secondary" onclick="showWork('${id}')">キャンセル</button></div></div>`;
+}
+window.saveInline=(id,field)=>saveWorkField(id,field,$(`inline_${field}`).value.trim());
+
+function addListItem(id,field,label){
+ const b=books.find(x=>x.id===id);if(!b)return;
+ const value=prompt(`${label}を追加`);
+ if(value===null||!value.trim())return;
+ const lines=splitLines(b[field]);lines.push(value.trim());b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+}
+function editListItem(id,field,index,label){
+ const b=books.find(x=>x.id===id);if(!b)return;
+ const lines=splitLines(b[field]);const value=prompt(`${label}を編集`,lines[index]||'');
+ if(value===null)return;
+ if(value.trim())lines[index]=value.trim();else lines.splice(index,1);
+ b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+}
+function listSection(id,field,title){
+ const b=books.find(x=>x.id===id), lines=splitLines(b[field]);
+ return `<section class="detailSection"><div class="inlineHead"><h3>${esc(title)}</h3><button class="miniEdit" onclick="addListItem('${id}','${field}',${JSON.stringify(title)})">＋</button></div>
+ ${lines.length?lines.map((x,i)=>`<div class="itemRow"><div class="objectCard">${esc(x)}</div><button class="miniEdit" onclick="editListItem('${id}','${field}',${i},${JSON.stringify(title)})">✎</button></div>`).join(''):'<div class="tiny">まだありません</div>'}</section>`;
+}
+function addCustomSectionInline(id){
+ const b=books.find(x=>x.id===id);if(!b)return;
+ const title=prompt('セクション名（例：好きな台詞、特殊設定）');if(!title||!title.trim())return;
+ b.customSections=b.customSections||[];b.customSections.push({title:title.trim(),items:[]});b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+}
+function addCustomItem(id,si){
+ const b=books.find(x=>x.id===id);const s=b?.customSections?.[si];if(!s)return;
+ const v=prompt(`${s.title}に追加`);if(!v||!v.trim())return;s.items=s.items||[];s.items.push(v.trim());b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+}
+function editCustomItem(id,si,ii){
+ const b=books.find(x=>x.id===id),s=b?.customSections?.[si];if(!s)return;
+ const v=prompt(`${s.title}を編集`,s.items[ii]||'');if(v===null)return;
+ if(v.trim())s.items[ii]=v.trim();else s.items.splice(ii,1);b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+}
+function renameCustomSection(id,si){
+ const b=books.find(x=>x.id===id),s=b?.customSections?.[si];if(!s)return;
+ const v=prompt('セクション名',s.title);if(v===null)return;
+ if(!v.trim()){if(confirm('このセクションを削除しますか？'))b.customSections.splice(si,1)}else s.title=v.trim();
+ b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+}
 window.showWork=id=>{
  const b=books.find(x=>x.id===id);if(!b)return;
- const custom=(b.customSections||[]).map((s,si)=>`<section class="detailSection"><h3>${esc(s.title||'自由項目')}</h3>${(s.items||[]).map(i=>`<div class="objectCard">${esc(i)}</div>`).join('')}</section>`).join('');
+ const custom=(b.customSections||[]).map((s,si)=>`<section class="detailSection">
+   <div class="inlineHead"><h3>${esc(s.title||'自由項目')}</h3><button class="miniEdit" onclick="renameCustomSection('${b.id}',${si})">✎</button><button class="miniEdit" onclick="addCustomItem('${b.id}',${si})">＋</button></div>
+   ${(s.items||[]).length?(s.items||[]).map((x,ii)=>`<div class="itemRow"><div class="objectCard">${esc(x)}</div><button class="miniEdit" onclick="editCustomItem('${b.id}',${si},${ii})">✎</button></div>`).join(''):'<div class="tiny">まだありません</div>'}
+  </section>`).join('');
  showPage(b.title||'作品詳細',`
   <section class="hero panel">
-   <div class="tiny">${b.fandom?esc(b.fandom)+' / ':''}${b.series?`<button class="linkish" onclick="showSeriesByName(${JSON.stringify(b.series)})">${esc(b.series)} ＞</button>`:''}</div>
-   <h1>${esc(b.title||'タイトル未取得')}</h1><div class="author">${esc(b.author||'作者未取得')}</div>
-   <div>${tagArray(b.tags).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>
-   <div class="tiny" style="margin-top:10px">${b.progress?'前回：'+esc(b.progress)+' ・ ':''}${b.lastRead?'最終読書 '+daysAgo(b.lastRead):'まだ読書日時なし'}</div>
-   <div class="actions">${b.url?`<button onclick="openBook('${b.id}')">続きを読む</button>`:''}<button class="secondary" onclick="editBook('${b.id}')">編集</button></div>
+   <div class="basicLine">
+    <div class="tiny grow">${b.fandom?esc(b.fandom)+' / ':''}${b.series?`<button class="linkish" onclick="showSeriesByName(${JSON.stringify(b.series)})">${esc(b.series)} ＞</button>`:''}</div>
+    <button class="miniEdit" onclick="quickField('${b.id}','fandom','原作')">原作 ✎</button>
+    <button class="miniEdit" onclick="quickField('${b.id}','series','シリーズ')">シリーズ ✎</button>
+   </div>
+   <div data-section="title"><div class="basicLine"><h1 class="grow">${esc(b.title||'タイトル未取得')}</h1><button class="miniEdit" onclick="editField('${b.id}','title','タイトル',false)">✎</button></div></div>
+   <div data-section="author"><div class="basicLine"><div class="author grow">${esc(b.author||'作者未取得')}</div><button class="miniEdit" onclick="editField('${b.id}','author','作者',false)">✎</button></div></div>
+   <div data-section="tags"><div class="basicLine"><div class="grow">${tagArray(b.tags).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')||'<span class="tiny">タグなし</span>'}</div><button class="miniEdit" onclick="editField('${b.id}','tags','タグ',false)">✎</button></div></div>
+   <div data-section="progress"><div class="tiny" style="margin-top:10px">${b.progress?'前回：'+esc(b.progress)+' ・ ':''}${b.lastRead?'最終読書 '+daysAgo(b.lastRead):'まだ読書日時なし'}</div></div>
+   <div class="actions">${b.url?`<button onclick="openBook('${b.id}')">続きを読む</button>`:''}<button class="secondary" onclick="editField('${b.id}','progress','読書位置',false)">読書位置 ✎</button></div>
   </section>
-  ${b.recap?`<section class="detailSection"><h3>前回まで</h3><div>${esc(b.recap)}</div></section>`:''}
-  ${b.episodeSummary?`<section class="detailSection"><h3>今回起きたこと</h3><div>${esc(b.episodeSummary)}</div></section>`:''}
-  ${b.charactersText?`<section class="detailSection"><h3>登場人物</h3>${objectList(b.charactersText)}</section>`:''}
-  ${b.relationsText?`<section class="detailSection"><h3>関係</h3>${objectList(b.relationsText)}</section>`:''}
-  ${b.eventsText?`<section class="detailSection"><h3>重要イベント</h3>${objectList(b.eventsText)}</section>`:''}
-  ${b.questions?`<section class="detailSection"><h3>気になること</h3>${objectList(b.questions)}</section>`:''}
-  ${b.memo?`<section class="detailSection"><h3>メモ・感想</h3><div>${esc(b.memo)}</div></section>`:''}
+
+  <section class="detailSection" data-section="recap"><div class="inlineHead"><h3>前回まで</h3><button class="miniEdit" onclick="editField('${b.id}','recap','前回まで')">✎</button></div><div>${b.recap?esc(b.recap):'<span class="tiny">まだありません</span>'}</div></section>
+  <section class="detailSection" data-section="episodeSummary"><div class="inlineHead"><h3>今回起きたこと</h3><button class="miniEdit" onclick="editField('${b.id}','episodeSummary','今回起きたこと')">✎</button></div><div>${b.episodeSummary?esc(b.episodeSummary):'<span class="tiny">まだありません</span>'}</div></section>
+  ${listSection(b.id,'charactersText','登場人物')}
+  ${listSection(b.id,'relationsText','関係')}
+  ${listSection(b.id,'eventsText','重要イベント')}
+  ${listSection(b.id,'questions','気になること')}
+  <section class="detailSection" data-section="memo"><div class="inlineHead"><h3>メモ・感想</h3><button class="miniEdit" onclick="editField('${b.id}','memo','メモ・感想')">✎</button></div><div>${b.memo?esc(b.memo):'<span class="tiny">まだありません</span>'}</div></section>
   ${custom}
+  <section class="detailSection"><button class="secondary" onclick="addCustomSectionInline('${b.id}')">＋ セクションを追加</button></section>
   <section class="detailSection"><h3>読書履歴</h3>${(b.readingHistory||[]).length?(b.readingHistory||[]).slice().reverse().map(h=>`<div class="objectCard">${new Date(h.readAt).toLocaleString('ja-JP')} ・ ${esc(h.action||'読書')}</div>`).join(''):'<div class="tiny">まだ履歴はありません</div>'}</section>
  `);
 }
@@ -355,7 +434,7 @@ window.editBook=id=>openEditor(books.find(b=>b.id===id));
 window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'mark-read'});persist()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.removeBook=id=>{if(confirm('この記録を削除しますか？')){books=books.filter(x=>x.id!==id);persist()}};
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:5,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v3.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:6,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v3.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
  const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';

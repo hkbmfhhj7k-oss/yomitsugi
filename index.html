@@ -443,4 +443,49 @@ function acceptQuery(){
  if(raw){pickup(raw,{silent:true});history.replaceState({},'',location.pathname+location.hash)}
 }
 migrate();render();acceptQuery();
+
+// v0.7: iOS Shortcut intake bridge.
+// Shortcut may open:
+//   https://hkbmfhhj7k-oss.github.io/yomitsugi/?intake=<encoded shared text>
+// Shared pixiv text example:
+//   title | author https://www.pixiv.net/novel/show.php?id=...
+(function shortcutIntakeBridge(){
+  const params=new URLSearchParams(location.search);
+  const raw=params.get('intake')||params.get('share');
+  if(!raw) return;
+  // Existing app query-intake may already have consumed it. sourceKey prevents duplicates.
+  setTimeout(()=>{
+    try{
+      const parsed=parseSharedInput(raw);
+      const existing=findExisting(parsed);
+      if(existing){
+        history.replaceState(null,'',location.pathname+location.hash);
+        showWork(existing.id);
+        showToast('登録済みの作品だよ');
+        return;
+      }
+      // Reuse the same save path as quick intake where possible.
+      const now=new Date().toISOString();
+      const b=migrateBook({
+        id:uid(), title:parsed.title||'', author:parsed.author||'', url:parsed.url||'',
+        source:parsed.source||guessSource(parsed.url||''), sourceId:parsed.sourceId||'',
+        sourceKey:parsed.sourceKey||'', series:'', fandom:'', tags:[],
+        readingStatus:'読書中', metadataStatus:(parsed.title&&parsed.author)?'ok':'needsReview',
+        progress:'', clip:'', memo:'', capturedAt:now, updatedAt:now, lastRead:'',
+        captures:[{type:'shortcut-share',raw,at:now}],
+        tagSnapshots:[], readingHistory:[], recap:'', episodeSummary:'', questions:'',
+        charactersText:'', relationsText:'', eventsText:'', favoriteLevel:'',
+        sendToBiblio:false, favoriteParts:'', customSections:[]
+      });
+      books.unshift(b);persist(false);
+      history.replaceState(null,'',location.pathname+location.hash);
+      showWork(b.id);
+      showToast('Yomitsugiに追加したよ');
+    }catch(e){
+      console.error(e);
+      showToast('受け取りに失敗しました');
+    }
+  },120);
+})();
+
 </script></body></html>

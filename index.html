@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.4 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.7.1 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -13,7 +13,7 @@ main{max-width:780px;margin:auto;padding:20px 16px 110px}.brand{font-family:Geor
 .row{display:flex;gap:10px;align-items:center}.grow{flex:1}.stack{display:flex;gap:10px}
 input,textarea,select{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px;font:inherit}textarea{min-height:80px}
 button,.buttonlike{border:0;border-radius:12px;padding:11px 14px;font-weight:700;background:var(--accent);color:#fff;cursor:pointer}
-button.secondary,.buttonlike.secondary{background:var(--soft);color:var(--accent)}button.ghost{background:transparent;color:var(--muted);padding:7px}
+button.secondary,.buttonlike.secondary{background:var(--soft);color:var(--accent)}button.ghost{background:transparent;color:var(--muted);padding:7px}.dangerZone{margin-top:28px;border-color:#ead7d7;background:#fffafa}.dangerBtn{background:#fff!important;color:#9a4d4d!important;border:1px solid #e7caca!important}
 label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.title{font-weight:800;font-size:17px}
 .pill{display:inline-block;background:var(--soft);color:var(--accent);padding:5px 9px;border-radius:999px;font-size:11px;margin:3px 4px 0 0}
 .tag{display:inline-block;border:1px solid var(--line);padding:4px 8px;border-radius:999px;font-size:11px;margin:3px 4px 0 0}
@@ -44,7 +44,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .basicLine{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.4</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.7.1</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -343,6 +343,7 @@ window.showWork=id=>{
   ${custom}
   <section class="detailSection"><button class="secondary" onclick="addCustomSectionInline('${b.id}')">＋ セクションを追加</button></section>
   <section class="detailSection"><h3>読書履歴</h3>${(b.readingHistory||[]).length?(b.readingHistory||[]).slice().reverse().map(h=>`<div class="objectCard">${new Date(h.readAt).toLocaleString('ja-JP')} ・ ${esc(h.action||'読書')}</div>`).join(''):'<div class="tiny">まだ履歴はありません</div>'}</section>
+  <section class="detailSection dangerZone"><h3>作品の削除</h3><div class="tiny">この作品だけをYomitsugiから削除します。シリーズ内のほかの作品は残ります。</div><div class="actions"><button class="dangerBtn" onclick="deleteWork('${b.id}')">この作品を削除</button></div></section>
  `);
 }
 window.showSeriesByName=name=>{
@@ -433,7 +434,8 @@ $('search').oninput=render;document.querySelectorAll('[data-filter]').forEach(b=
 window.editBook=id=>openEditor(books.find(b=>b.id===id));
 window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'mark-read'});persist()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
-window.removeBook=id=>{if(confirm('この記録を削除しますか？')){books=books.filter(x=>x.id!==id);persist()}};
+window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
+window.removeBook=window.deleteWork;
 $('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:6,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v3.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){

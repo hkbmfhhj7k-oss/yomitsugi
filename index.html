@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.14.0 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.14.1 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -56,7 +56,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 </style>
 </head><body><main>
- <div class="brand">Yomitsugi <span class="tiny">v0.14.0</span></div>
+ <div class="brand">Yomitsugi <span class="tiny">v0.14.1</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 <div id="intakeDebug" class="notice hidden" style="white-space:pre-wrap;word-break:break-all"></div>
 
@@ -364,10 +364,36 @@ function migrate(){
 let d1SyncTimer=null;
 let d1SyncRunning=false;
 let d1SyncPending=false;
+const d1DirtyIds=new Set();
+const d1Fingerprints=new Map();
+
+function workFingerprint(work){
+ try{return JSON.stringify(work||{})}catch{return String(work?.updatedAt||'')}
+}
+
+function rememberD1Baseline(list=books){
+ d1Fingerprints.clear();
+ (list||[]).forEach(work=>{
+  if(work?.id)d1Fingerprints.set(work.id,workFingerprint(work));
+ });
+}
+
+function collectDirtyWorks(){
+ const liveIds=new Set();
+ (books||[]).forEach(work=>{
+  if(!work?.id)return;
+  liveIds.add(work.id);
+  if(d1Fingerprints.get(work.id)!==workFingerprint(work))d1DirtyIds.add(work.id);
+ });
+ // 作品削除は専用DELETE APIで処理するため、存在しないIDは保存待ちから外す。
+ [...d1DirtyIds].forEach(id=>{if(!liveIds.has(id))d1DirtyIds.delete(id)});
+}
 
 function queueD1Writeback(){
  const token=getD1Token();
  if(!token)return;
+ collectDirtyWorks();
+ if(!d1DirtyIds.size)return;
  clearTimeout(d1SyncTimer);
  d1SyncTimer=setTimeout(()=>syncBooksToD1(),650);
 }
@@ -389,24 +415,46 @@ async function saveWorkToD1(work){
  return data;
 }
 
+async function deleteD1Resource(kind,id){
+ const token=getD1Token();
+ if(!token)return {ok:true,localOnly:true};
+ const path=kind==='clip'?'/library/clip/':'/library/work/';
+ const r=await fetch(YOMITSUGI_API+path+encodeURIComponent(id),{
+  method:'DELETE',
+  headers:{'Authorization':'Bearer '+token}
+ });
+ let data=null;
+ try{data=await r.json()}catch{}
+ if(!r.ok||!data?.ok)throw new Error(data?.error||('HTTP '+r.status));
+ return data;
+}
+
 async function syncBooksToD1(){
  if(!getD1Token())return;
+ collectDirtyWorks();
+ if(!d1DirtyIds.size)return;
  if(d1SyncRunning){d1SyncPending=true;return}
  d1SyncRunning=true;
  d1SyncPending=false;
  try{
   setDbStatus('D1へ保存中…');
-  for(let i=0;i<books.length;i++){
-   const b=books[i];
+  const ids=[...d1DirtyIds];
+  for(const requestedId of ids){
+   const b=books.find(x=>x.id===requestedId);
+   if(!b){d1DirtyIds.delete(requestedId);continue}
    const result=await saveWorkToD1(b);
    if(result?.id&&result.id!==b.id){
     const oldId=b.id;
+    d1DirtyIds.delete(oldId);
+    d1Fingerprints.delete(oldId);
     b.id=result.id;
     try{
      const current=localStorage.getItem(CURRENT_KEY);
      if(current===oldId)localStorage.setItem(CURRENT_KEY,result.id);
     }catch{}
    }
+   d1DirtyIds.delete(b.id);
+   d1Fingerprints.set(b.id,workFingerprint(b));
   }
   localStorage.setItem(KEY,JSON.stringify(books));
   setDbStatus('D1接続中・保存済み');
@@ -427,6 +475,8 @@ function persist(redraw=true){
  if(redraw)render();
  queueD1Writeback();
 }
+
+rememberD1Baseline(books);
 function daysAgo(iso){if(!iso)return '';const d=Math.max(0,Math.floor((Date.now()-new Date(iso))/86400000));return d===0?'今日':`${d}日前`}
 function searchable(b){return [b.title,b.author,b.series,b.fandom,...tagArray(b.tags),b.memo,b.clip,b.progress,b.sourceId].join(' ').toLowerCase()}
 let detailScrollRestore=null;
@@ -824,7 +874,24 @@ $('routeConfirm').onclick=()=>{
 };
 window.useClipText=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(!b||!c)return;const text=savedClipSelection;savedClipSelection='';if(!text){showToast('先に使いたい文章を選択してね');return}openRouteDialog(b,c,text)};
 window.useWholeClip=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(b&&c)openRouteDialog(b,c,c.text)};
-window.deleteTextClip=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(!b||!c)return;if(!confirm('この「拾った本文」を削除しますか？\n各項目へコピー済みの文章は残ります。'))return;b.textClips=(b.textClips||[]).filter(x=>x!==c);b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('拾った本文を削除したよ')};
+window.deleteTextClip=async(id,clipId)=>{
+ const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);
+ if(!b||!c)return;
+ if(!confirm('この「拾った本文」を削除しますか？\n各項目へコピー済みの文章は残ります。'))return;
+ try{
+  if(getD1Token())setDbStatus('D1から削除中…');
+  await deleteD1Resource('clip',clipId);
+  b.textClips=(b.textClips||[]).filter(x=>x!==c);
+  b.updatedAt=new Date().toISOString();
+  persist(false);
+  showWork(id);
+  showToast('拾った本文を削除したよ');
+ }catch(e){
+  console.error('D1 clip delete failed',e);
+  setDbStatus('D1削除エラー');
+  showToast('D1から削除できなかったので残しました');
+ }
+};
 
 function duplicateCard(b){
  return `<div class="title">${esc(b.title||'タイトル未取得')}</div>
@@ -912,9 +979,32 @@ window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toIS
 const _showWorkBase=showWork;
 showWork=function(id){_showWorkBase(id);restoreDetailScroll()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
-window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
+window.deleteWork=async id=>{
+ const b=books.find(x=>x.id===id);if(!b)return;
+ const name=b.title||'タイトル未取得';
+ if(!confirm(`『${name}』をYomitsugiから削除しますか？`))return;
+ try{
+  if(getD1Token())setDbStatus('D1から削除中…');
+  await deleteD1Resource('work',id);
+  books=books.filter(x=>x.id!==id);
+  d1DirtyIds.delete(id);
+  d1Fingerprints.delete(id);
+  try{
+   if(localStorage.getItem(CURRENT_KEY)===id)localStorage.removeItem(CURRENT_KEY);
+  }catch{}
+  localStorage.setItem(KEY,JSON.stringify(books));
+  render();
+  showHome();
+  setDbStatus(getD1Token()?'D1接続中・保存済み':'端末データ');
+  showToast('作品を削除したよ');
+ }catch(e){
+  console.error('D1 work delete failed',e);
+  setDbStatus('D1削除エラー');
+  showToast('D1から削除できなかったので残しました');
+ }
+};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.13.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.14.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function showIntakeDebug(){
  const el=$('intakeDebug'); if(!el)return;
@@ -1182,6 +1272,8 @@ async function loadLibraryFromD1({quiet = false} = {}) {
 
     // localStorageは削除せず、統合後の表示キャッシュとして更新する。
     localStorage.setItem(KEY, JSON.stringify(books));
+    rememberD1Baseline(books);
+    d1DirtyIds.clear();
     render();
 
     setDbStatus('D1接続中・' + data.books.length + '件');

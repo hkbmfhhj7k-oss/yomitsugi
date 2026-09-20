@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.12.6 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.13.0 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -56,7 +56,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 </style>
 </head><body><main>
- <div class="brand">Yomitsugi <span class="tiny">v0.12.6</span></div>
+ <div class="brand">Yomitsugi <span class="tiny">v0.13.0</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 <div id="intakeDebug" class="notice hidden" style="white-space:pre-wrap;word-break:break-all"></div>
 
@@ -96,6 +96,8 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
   <button class="secondary" id="manualBtn">＋ 手動で追加</button>
   <button class="secondary" id="exportBtn">書き出す</button>
   <button class="secondary" id="dbCopyBtn">D1へコピー</button>
+  <button class="secondary" id="dbConnectBtn">D1接続</button>
+  <span class="tiny" id="dbStatus">端末データ</span>
   <label style="margin:0"><span class="buttonlike secondary">読み込む</span><input id="importFile" type="file" accept="application/json" class="hidden"></label>
  </div>
  <section id="list"></section>
@@ -154,6 +156,37 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
   </details>
   <div class="actions"><button type="submit">保存</button><button type="button" class="secondary" id="cancelBtn">キャンセル</button></div>
  </form>
+</dialog>
+
+<dialog id="dbConnectDialog">
+ <div class="modal">
+  <div class="row">
+   <div class="title grow">D1とつなぐ</div>
+   <button type="button" class="ghost" id="dbConnectClose">✕</button>
+  </div>
+
+  <div class="notice ok">
+   ショートカットからD1へ保存した作品・拾った本文を、
+   このYomitsugiにも読み込みます。
+  </div>
+
+  <label>API_TOKEN</label>
+  <input id="dbConnectToken" type="password" autocomplete="off"
+   placeholder="Cloudflareに設定したAPI_TOKEN">
+
+  <div class="tiny" style="margin-top:7px">
+   接続用トークンはこの端末のブラウザ内だけに保存します。
+   GitHubのHTMLや作品データには書き込みません。
+  </div>
+
+  <div id="dbConnectResult" class="notice hidden" style="white-space:pre-wrap"></div>
+
+  <div class="actions">
+   <button type="button" id="dbConnectStart">接続して読み込む</button>
+   <button type="button" class="secondary" id="dbReloadBtn">D1を再読み込み</button>
+   <button type="button" class="ghost" id="dbDisconnectBtn">接続を解除</button>
+  </div>
+ </div>
 </dialog>
 
 <dialog id="duplicateDialog">
@@ -816,7 +849,7 @@ showWork=function(id){_showWorkBase(id);restoreDetailScroll()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.12.6.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.13.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function showIntakeDebug(){
  const el=$('intakeDebug'); if(!el)return;
@@ -826,7 +859,7 @@ function showIntakeDebug(){
  const raw=p.get('intake')||p.get('share')||p.get('text')||p.get('url')||p.get('u')||'';
  let parsed={}; try{parsed=extractIntake(raw)}catch(e){parsed={error:String(e)}}
  el.classList.remove('hidden');
- el.textContent='受信診断 v0.12.6\nquery keys: '+(keys.join(', ')||'(なし)')+'\nraw: '+(raw||'(空)')+'\nparsed URL: '+(parsed.url||'(なし)')+'\ntitle: '+(parsed.title||'(なし)')+'\nauthor: '+(parsed.author||'(なし)');
+ el.textContent='受信診断 v0.13.0\nquery keys: '+(keys.join(', ')||'(なし)')+'\nraw: '+(raw||'(空)')+'\nparsed URL: '+(parsed.url||'(なし)')+'\ntitle: '+(parsed.title||'(なし)')+'\nauthor: '+(parsed.author||'(なし)');
 }
 function acceptQuery(){
  const p=new URLSearchParams(location.search);if(p.has('intake'))return;let raw=p.get('text')||p.get('share')||'';
@@ -897,9 +930,9 @@ function saveSharedText(raw,destination=null){
   persist(false);
   return b;
 }
-// v0.12.6: share destination dialog is parsed before the JavaScript bridge runs.
+// v0.13.0: share destination dialog is parsed before the JavaScript bridge runs.
 (function shortcutIntakeBridge(){
-  // v0.12.6: Shortcut intake is handled independently from the ordinary query importer.
+  // v0.13.0: Shortcut intake is handled independently from the ordinary query importer.
   // Accept ?intake= first, with share/text/url fallbacks for older Shortcuts.
   const params=new URLSearchParams(location.search);
   let raw=params.get('intake') || params.get('share') || params.get('text') || '';
@@ -956,7 +989,213 @@ function saveSharedText(raw,destination=null){
   }
 })();
 /* ========================================
-   v0.12.6
+   v0.13.0
+   D1 library bridge
+   D1を読み込み、端末データと安全に統合して表示する。
+   端末側だけにある情報はできるだけ保持する。
+======================================== */
+
+const D1_TOKEN_KEY = 'yomitsugi.apiToken.v1';
+
+function getD1Token() {
+  return localStorage.getItem(D1_TOKEN_KEY) || '';
+}
+
+function setDbStatus(message) {
+  const el = $('dbStatus');
+  if (el) el.textContent = message;
+}
+
+function mergeClipLists(localClips, remoteClips) {
+  const map = new Map();
+
+  const add = (clip, preferRemote = false) => {
+    if (!clip) return;
+    const key = String(clip.id || '') ||
+      ('body:' + String(clip.text || clip.body || '') + '@' + String(clip.capturedAt || ''));
+    const old = map.get(key) || {};
+    const merged = preferRemote ? {...old, ...clip} : {...clip, ...old};
+    merged.text = merged.text || merged.body || '';
+    merged.usedTo = Array.isArray(clip.usedTo) && clip.usedTo.length
+      ? clip.usedTo
+      : (Array.isArray(old.usedTo) ? old.usedTo : []);
+    map.set(key, merged);
+  };
+
+  (Array.isArray(localClips) ? localClips : []).forEach(x => add(x, false));
+  (Array.isArray(remoteClips) ? remoteClips : []).forEach(x => add(x, true));
+
+  return [...map.values()].sort(
+    (a, b) => String(a.capturedAt || '').localeCompare(String(b.capturedAt || ''))
+  );
+}
+
+function mergeHistoryLists(localHistory, remoteHistory) {
+  const map = new Map();
+  [...(Array.isArray(localHistory) ? localHistory : []),
+   ...(Array.isArray(remoteHistory) ? remoteHistory : [])]
+    .forEach(item => {
+      if (!item) return;
+      const key = String(item.readAt || '') + '|' + String(item.action || 'read');
+      map.set(key, {...item});
+    });
+
+  return [...map.values()].sort(
+    (a, b) => String(a.readAt || '').localeCompare(String(b.readAt || ''))
+  );
+}
+
+function mergeLibraryBooks(localBooks, remoteBooks) {
+  const result = (Array.isArray(localBooks) ? localBooks : []).map(book => ({...book}));
+
+  for (const remoteRaw of (Array.isArray(remoteBooks) ? remoteBooks : [])) {
+    const remote = {
+      ...remoteRaw,
+      tags: tagArray(remoteRaw.tags),
+      readingStatus: remoteRaw.readingStatus || remoteRaw.status || '読書中',
+      metadataStatus: remoteRaw.metadataStatus || metadataState(remoteRaw),
+      textClips: Array.isArray(remoteRaw.textClips) ? remoteRaw.textClips : [],
+      readingHistory: Array.isArray(remoteRaw.readingHistory) ? remoteRaw.readingHistory : [],
+      captures: Array.isArray(remoteRaw.captures) ? remoteRaw.captures : [],
+      tagSnapshots: Array.isArray(remoteRaw.tagSnapshots) ? remoteRaw.tagSnapshots : [],
+      customSections: Array.isArray(remoteRaw.customSections) ? remoteRaw.customSections : []
+    };
+
+    const index = result.findIndex(local =>
+      (local.id && remote.id && local.id === remote.id) ||
+      (local.sourceKey && remote.sourceKey && local.sourceKey === remote.sourceKey) ||
+      (local.url && remote.url && normalizeUrl(local.url) === normalizeUrl(remote.url))
+    );
+
+    if (index < 0) {
+      result.push(remote);
+      continue;
+    }
+
+    const local = result[index];
+
+    // D1の最新値を基本にする。ただし、まだD1へ正規化していない端末固有項目は保持。
+    result[index] = {
+      ...local,
+      ...remote,
+      progress: remote.progress || local.progress || '',
+      clip: remote.clip || local.clip || '',
+      customSections: remote.customSections.length ? remote.customSections : (local.customSections || []),
+      captures: remote.captures.length ? remote.captures : (local.captures || []),
+      tagSnapshots: remote.tagSnapshots.length ? remote.tagSnapshots : (local.tagSnapshots || []),
+      textClips: mergeClipLists(local.textClips, remote.textClips),
+      readingHistory: mergeHistoryLists(local.readingHistory, remote.readingHistory)
+    };
+  }
+
+  return result;
+}
+
+async function loadLibraryFromD1({quiet = false} = {}) {
+  const token = getD1Token();
+
+  if (!token) {
+    setDbStatus('端末データ');
+    return {ok:false, reason:'no-token'};
+  }
+
+  setDbStatus('D1読込中…');
+
+  try {
+    const response = await fetch(YOMITSUGI_API + '/library', {
+      method: 'GET',
+      headers: {'Authorization': 'Bearer ' + token}
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.ok || !Array.isArray(data.books)) {
+      throw new Error(data.error || data.detail || ('HTTP ' + response.status));
+    }
+
+    books = mergeLibraryBooks(books, data.books);
+
+    // localStorageは削除せず、統合後の表示キャッシュとして更新する。
+    localStorage.setItem(KEY, JSON.stringify(books));
+    render();
+
+    setDbStatus('D1接続中・' + data.books.length + '件');
+
+    if (!quiet) showToast('D1から最新データを読み込んだよ');
+
+    return {ok:true, count:data.books.length};
+  } catch (error) {
+    setDbStatus('D1接続エラー');
+    if (!quiet) showToast('D1を読めなかったので端末データを表示中');
+    return {ok:false, error:String(error?.message || error)};
+  }
+}
+
+function openDbConnect() {
+  $('dbConnectToken').value = getD1Token();
+  $('dbConnectResult').classList.add('hidden');
+  $('dbConnectResult').classList.remove('ok');
+  $('dbConnectResult').textContent = '';
+  $('dbConnectDialog').showModal();
+}
+
+$('dbConnectBtn').onclick = openDbConnect;
+$('dbConnectClose').onclick = () => $('dbConnectDialog').close();
+
+$('dbConnectStart').onclick = async () => {
+  const token = $('dbConnectToken').value.trim();
+  const result = $('dbConnectResult');
+
+  if (!token) {
+    result.textContent = 'API_TOKENを入力してね。';
+    result.classList.remove('hidden');
+    return;
+  }
+
+  localStorage.setItem(D1_TOKEN_KEY, token);
+  const loaded = await loadLibraryFromD1();
+
+  result.classList.remove('hidden');
+  result.classList.toggle('ok', !!loaded.ok);
+  result.textContent = loaded.ok
+    ? '✓ D1と接続しました。\n' + loaded.count + '作品を読み込みました。\n\nショートカットから追加した作品・本文も通常画面に反映されます。'
+    : '接続できませんでした。\n' + (loaded.error || 'API_TOKENを確認してください。');
+
+  if (loaded.ok) $('dbConnectToken').value = '';
+};
+
+$('dbReloadBtn').onclick = async () => {
+  const typed = $('dbConnectToken').value.trim();
+  if (typed) localStorage.setItem(D1_TOKEN_KEY, typed);
+
+  const loaded = await loadLibraryFromD1();
+  const result = $('dbConnectResult');
+
+  result.classList.remove('hidden');
+  result.classList.toggle('ok', !!loaded.ok);
+  result.textContent = loaded.ok
+    ? '✓ D1を再読み込みしました。\n' + loaded.count + '作品。'
+    : '再読み込みできませんでした。\n' + (loaded.error || '');
+};
+
+$('dbDisconnectBtn').onclick = () => {
+  localStorage.removeItem(D1_TOKEN_KEY);
+  $('dbConnectToken').value = '';
+  setDbStatus('端末データ');
+
+  const result = $('dbConnectResult');
+  result.classList.remove('hidden', 'ok');
+  result.textContent =
+    'この端末に保存した接続用API_TOKENだけ削除しました。\n作品データとD1は削除していません。';
+};
+
+// すでに接続済みなら、次回起動から自動でD1を読む。
+if (getD1Token()) {
+  setTimeout(() => loadLibraryFromD1({quiet:true}), 0);
+}
+
+/* ========================================
+   v0.13.0
    localStorage → D1 安全コピー
 ======================================== */
 
@@ -1025,7 +1264,7 @@ function openDbCopy() {
 
   $('dbCopyResult').textContent = '';
 
-  $('dbToken').value = '';
+  $('dbToken').value = getD1Token();
 
   $('dbCopyStart').disabled = false;
 

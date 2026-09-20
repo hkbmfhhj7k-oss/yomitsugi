@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.11.8 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.11.9 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -56,7 +56,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.11.8</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.11.9</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -741,10 +741,10 @@ showWork=function(id){_showWorkBase(id);restoreDetailScroll()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.8.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.9.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
- const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';
+ const p=new URLSearchParams(location.search);if(p.has('intake'))return;let raw=p.get('text')||p.get('share')||'';
  const u=p.get('url')||p.get('u')||'';const title=p.get('title')||'';const author=p.get('author')||'';
  if(!raw&&u)raw=(title||author)?`${title}${author?' | '+author:''} ${u}`:u;
  if(raw){pickup(raw,{silent:true});history.replaceState({},'',location.pathname+location.hash)}
@@ -813,18 +813,21 @@ function saveSharedText(raw,destination=null){
   return b;
 }
 (function shortcutIntakeBridge(){
+  // v0.11.9: Shortcut intake is handled independently from the ordinary query importer.
+  // Accept ?intake= first, with share/text/url fallbacks for older Shortcuts.
   const params=new URLSearchParams(location.search);
   let raw=params.get('intake') || params.get('share') || params.get('text') || '';
+  const directUrl=params.get('url') || params.get('u') || '';
+  const directTitle=params.get('title') || '';
+  const directAuthor=params.get('author') || '';
+  if(!raw && directUrl) raw=(directTitle||directAuthor)?`${directTitle}${directAuthor?' | '+directAuthor:''} ${directUrl}`:directUrl;
   if(!raw) return;
 
-  // Shortcuts normally URL-encodes once. If an encoded URL/text somehow arrives
-  // one layer deeper, unwrap it once without breaking ordinary Japanese text.
+  // URLSearchParams already decodes one layer. Only unwrap an accidental second layer.
   if(!/https?:\/\//i.test(raw) && /%[0-9A-Fa-f]{2}/.test(raw)){
     try{ const decoded=decodeURIComponent(raw); if(decoded) raw=decoded; }catch{}
   }
-
-  // Remove the query immediately so reload/back cannot import the same share twice.
-  history.replaceState(null,'',location.pathname+location.hash);
+  raw=String(raw).replace(/\+/g,' ').trim();
 
   try{
     const parsed=extractIntake(raw);
@@ -832,21 +835,28 @@ function saveSharedText(raw,destination=null){
       const b=pickup(raw,{silent:true});
       if(!b){ showToast('作品を受け取れませんでした'); return; }
       rememberCurrentWork(b);
+      // Clear the query only after the data has been persisted.
+      history.replaceState(null,'',location.pathname+location.hash);
       if(!document.getElementById('duplicateDialog')?.open) showWork(b.id);
       showToast('作品を拾ったよ。この作品を本文の保存先にしました');
       return;
     }
 
-    const state=currentWorkState();
-    if(!state.book || state.age>30*60*1000){
-      openShareDestinationChooser(raw);
-      showToast(state.book?'保存先を確認してね':'保存先の作品を選んでね');
-      return;
-    }
-    const b=saveSharedText(raw,state.book);
-    if(!b){ openShareDestinationChooser(raw); return; }
-    showWork(b.id);
-    showToast('選択した本文をこの作品に挟んだよ');
+    // Text-only shares need the destination dialog, which is declared after this script.
+    // Defer one tick so the whole document is parsed first.
+    history.replaceState(null,'',location.pathname+location.hash);
+    setTimeout(()=>{
+      const state=currentWorkState();
+      if(!state.book || state.age>30*60*1000){
+        openShareDestinationChooser(raw);
+        showToast(state.book?'保存先を確認してね':'保存先の作品を選んでね');
+        return;
+      }
+      const b=saveSharedText(raw,state.book);
+      if(!b){ openShareDestinationChooser(raw); return; }
+      showWork(b.id);
+      showToast('選択した本文をこの作品に挟んだよ');
+    },0);
   }catch(e){
     console.error(e);
     showToast('受け取りに失敗しました');

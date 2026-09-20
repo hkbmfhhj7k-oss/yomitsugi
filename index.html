@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.8 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.9 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -42,9 +42,13 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .itemRow{display:flex;gap:7px;align-items:flex-start}.itemRow .objectCard{flex:1}
 .addRow{margin-top:9px}
 .basicLine{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.clipText{white-space:pre-wrap;user-select:text;-webkit-user-select:text;line-height:1.7}
+.clipTools{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.clipUsed{font-size:11px;color:var(--muted);margin-top:7px}
+.seriesStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.seriesStat{background:var(--bg);border-radius:12px;padding:10px;text-align:center}.seriesStat b{display:block;font-size:18px}
+@media(max-width:540px){.seriesStats{grid-template-columns:1fr 1fr}}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.8</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.9</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -204,7 +208,7 @@ function migrate(){
     recap:b.recap||'',episodeSummary:b.episodeSummary||'',questions:b.questions||'',
     charactersText:b.charactersText||'',relationsText:b.relationsText||'',eventsText:b.eventsText||'',
     favoriteLevel:b.favoriteLevel||'',sendToBiblio:!!b.sendToBiblio,favoriteParts:b.favoriteParts||'',customSections:Array.isArray(b.customSections)?b.customSections:[],
-    textClips:Array.isArray(b.textClips)?b.textClips:[]}
+    textClips:Array.isArray(b.textClips)?b.textClips.map((c,i)=>({...c,id:c.id||('clip-'+i+'-'+(c.capturedAt||'')),usedTo:Array.isArray(c.usedTo)?c.usedTo:[]})):[]}
  });
  persist(false);
 }
@@ -336,7 +340,13 @@ window.showWork=id=>{
   </section>
 
   <section class="detailSection"><div class="inlineHead"><h3>拾った本文</h3><span class="tiny">${(b.textClips||[]).length}件</span></div>
-  ${(b.textClips||[]).length?(b.textClips||[]).slice().reverse().map(c=>`<div class="objectCard">${esc(c.text)}<div class="tiny" style="margin-top:6px">${new Date(c.capturedAt).toLocaleString('ja-JP')}</div></div>`).join(''):'<div class="tiny">まだありません</div>'}</section>
+  <div class="tiny">原文はそのまま残せます。文章を選択してから「選択部分を使う」を押すと、好きな項目へ枝分かれコピーできます。</div>
+  ${(b.textClips||[]).length?(b.textClips||[]).slice().reverse().map(c=>`<div class="objectCard">
+    <div class="clipText" data-clip-id="${esc(c.id||'')}">${esc(c.text)}</div>
+    <div class="tiny" style="margin-top:6px">${new Date(c.capturedAt).toLocaleString('ja-JP')}</div>
+    ${(c.usedTo||[]).length?`<div class="clipUsed">使用先：${(c.usedTo||[]).map(x=>esc(x)).join('・')}</div>`:''}
+    <div class="clipTools"><button class="miniEdit" onpointerdown="captureClipSelection()" onclick="useClipText('${b.id}','${c.id||''}')">選択部分を使う</button><button class="miniEdit" onclick="useWholeClip('${b.id}','${c.id||''}')">全文を使う</button><button class="miniEdit dangerBtn" onclick="deleteTextClip('${b.id}','${c.id||''}')">削除</button></div>
+  </div>`).join(''):'<div class="tiny">まだありません</div>'}</section>
   <section class="detailSection" data-section="recap"><div class="inlineHead"><h3>前回まで</h3><button class="miniEdit" onclick="editField('${b.id}','recap','前回まで')">✎</button></div><div>${b.recap?esc(b.recap):'<span class="tiny">まだありません</span>'}</div></section>
   <section class="detailSection" data-section="episodeSummary"><div class="inlineHead"><h3>今回起きたこと</h3><button class="miniEdit" onclick="editField('${b.id}','episodeSummary','今回起きたこと')">✎</button></div><div>${b.episodeSummary?esc(b.episodeSummary):'<span class="tiny">まだありません</span>'}</div></section>
   ${listSection(b.id,'charactersText','登場人物')}
@@ -352,9 +362,37 @@ window.showWork=id=>{
 }
 window.showSeriesByName=name=>{
  const items=books.filter(b=>b.series===name).sort((a,b)=>(a.capturedAt||'').localeCompare(b.capturedAt||''));
- const author=items.find(x=>x.author)?.author||'';
- showPage(name,`<section class="hero panel"><div class="tiny">SERIES</div><h1>${esc(name)}</h1><div class="author">${esc(author)}</div><div class="tiny" style="margin-top:8px">${items.length}話</div></section>${items.map(compactCard).join('')}`);
+ const author=items.find(x=>x.author)?.author||'', fandom=items.find(x=>x.fandom)?.fandom||'';
+ const tags=[...new Set(items.flatMap(x=>tagArray(x.tags)))], clips=items.reduce((n,x)=>n+(x.textClips||[]).length,0), read=items.filter(x=>x.readingStatus==='読了').length;
+ const latest=[...items].sort((a,b)=>(b.lastRead||b.updatedAt||'').localeCompare(a.lastRead||a.updatedAt||''))[0];
+ const recaps=items.filter(x=>x.recap||x.episodeSummary||x.eventsText);
+ showPage(name,`<section class="hero panel"><div class="tiny">SERIES</div><h1>${esc(name)}</h1><div class="author">${esc(author)}${fandom?' ・ '+esc(fandom):''}</div>
+ <div>${tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>
+ <div class="seriesStats"><div class="seriesStat"><b>${items.length}</b><span class="tiny">登録作品</span></div><div class="seriesStat"><b>${read}</b><span class="tiny">読了</span></div><div class="seriesStat"><b>${clips}</b><span class="tiny">拾った本文</span></div></div>
+ ${latest?`<div class="tiny" style="margin-top:10px">最後に触った作品：${esc(latest.title||'タイトル未取得')} ・ ${daysAgo(latest.lastRead||latest.updatedAt)}</div>`:''}</section>
+ ${recaps.length?`<section class="detailSection"><h3>シリーズを思い出す</h3>${recaps.map(x=>`<div class="objectCard"><b>${esc(x.title||'タイトル未取得')}</b>${x.recap?`<div style="margin-top:5px">${esc(x.recap)}</div>`:''}${x.episodeSummary?`<div class="tiny" style="margin-top:5px">今回：${esc(x.episodeSummary)}</div>`:''}${x.eventsText?`<div class="tiny" style="margin-top:5px">重要：${esc(x.eventsText)}</div>`:''}</div>`).join('')}</section>`:''}
+ <section class="detailSection"><h3>作品一覧</h3><div class="tiny">登録された作品をまとめて確認できます。</div></section>${items.map(compactCard).join('')}`);
 }
+let savedClipSelection='';
+window.captureClipSelection=()=>{savedClipSelection=String(window.getSelection()?.toString()||'').trim()};
+function clipById(b,clipId){return (b.textClips||[]).find(c=>String(c.id||'')===String(clipId))}
+function clipTargets(b){
+ const base=[['recap','前回まで'],['episodeSummary','今回起きたこと'],['charactersText','登場人物'],['relationsText','関係'],['eventsText','重要イベント'],['questions','気になること'],['memo','メモ・感想'],['favoriteParts','お気に入り箇所']];
+ (b.customSections||[]).forEach((x,i)=>base.push(['custom:'+i,x.title||('自由項目'+(i+1))])); return base;
+}
+function sendClipToTarget(b,c,text){
+ const targets=clipTargets(b), menu=targets.map((x,i)=>`${i+1}. ${x[1]}`).join('\n');
+ const ans=prompt('追加先を番号で選んでね\n\n'+menu,'1'); if(ans===null)return;
+ const t=targets[Number(ans)-1]; if(!t){showToast('その番号の項目はありません');return}
+ if(t[0].startsWith('custom:')){const i=Number(t[0].split(':')[1]),sec=b.customSections?.[i];if(!sec)return;sec.items=Array.isArray(sec.items)?sec.items:[];sec.items.push(text)}
+ else b[t[0]]=[b[t[0]],text].filter(Boolean).join('\n');
+ c.usedTo=Array.isArray(c.usedTo)?c.usedTo:[];if(!c.usedTo.includes(t[1]))c.usedTo.push(t[1]);
+ b.updatedAt=new Date().toISOString();persist(false);showWork(b.id);showToast('「'+t[1]+'」に追加したよ');
+}
+window.useClipText=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(!b||!c)return;let text=savedClipSelection||String(window.getSelection()?.toString()||'').trim();savedClipSelection='';if(!text){showToast('使いたい文章を選択してから押してね');return}sendClipToTarget(b,c,text)};
+window.useWholeClip=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(b&&c)sendClipToTarget(b,c,c.text)};
+window.deleteTextClip=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(!b||!c)return;if(!confirm('この「拾った本文」を削除しますか？\n各項目へコピー済みの文章は残ります。'))return;b.textClips=(b.textClips||[]).filter(x=>x!==c);b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('拾った本文を削除したよ')};
+
 function duplicateCard(b){
  return `<div class="title">${esc(b.title||'タイトル未取得')}</div>
  <div class="meta" style="margin-top:4px">${esc(b.author||'作者未取得')}${b.series?' ・ '+esc(b.series):''}${b.fandom?' ・ 原作 '+esc(b.fandom):''}</div>
@@ -412,7 +450,7 @@ function closeEditor(){$('editor').close()}
 $('duplicateClose').onclick=$('duplicateDismiss').onclick=()=> $('duplicateDialog').close();
 $('duplicateEdit').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);$('duplicateDialog').close();if(b)openEditor(b)};
 $('duplicateTouch').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);if(b){b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'mark-read'});persist();$('duplicatePreview').innerHTML=duplicateCard(b);showToast('読書日時を更新したよ')}};
-$('duplicateContinue').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);if(b&&b.url){b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')}};
+$('duplicateContinue').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);if(b&&b.url){rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')}};
 
 $('pickupBtn').onclick=()=>{const raw=$('quickInput').value.trim();if(pickup(raw))$('quickInput').value=''};
 $('manualBtn').onclick=()=>openEditor();$('backBtn').onclick=showHome;$('addCustomSectionBtn').onclick=()=>{const wrap=document.createElement('div');wrap.className='objectCard customEdit';wrap.innerHTML='<input class="customTitle" placeholder="項目名"><textarea class="customItems" placeholder="1行＝1項目"></textarea><button type="button" class="ghost customRemove">この項目を削除</button>';wrap.querySelector('.customRemove').onclick=()=>wrap.remove();$('customSectionsEditor').appendChild(wrap)};$('closeBtn').onclick=closeEditor;$('cancelBtn').onclick=closeEditor;
@@ -426,18 +464,18 @@ $('form').addEventListener('submit',e=>{
  if(!obj.id)obj.id=crypto.randomUUID();const i=books.findIndex(x=>x.id===obj.id);
  if(i>=0){
    const prev=books[i];obj.lastRead=prev.lastRead;obj.capturedAt=prev.capturedAt||obj.updatedAt;
-   obj.captures=prev.captures||[];obj.readingHistory=prev.readingHistory||[];obj.tagSnapshots=prev.tagSnapshots||[];
+   obj.captures=prev.captures||[];obj.readingHistory=prev.readingHistory||[];obj.tagSnapshots=prev.tagSnapshots||[];obj.textClips=prev.textClips||[];
    if(JSON.stringify(tagArray(prev.tags))!==JSON.stringify(obj.tags))obj.tagSnapshots.push({capturedAt:obj.updatedAt,tags:[...obj.tags]});
    books[i]=obj
  }else{
-   obj.capturedAt=obj.updatedAt;obj.captures=[{capturedAt:obj.updatedAt,method:'manual'}];obj.readingHistory=[];obj.tagSnapshots=obj.tags.length?[{capturedAt:obj.updatedAt,tags:[...obj.tags]}]:[];books.push(obj)
+   obj.capturedAt=obj.updatedAt;obj.captures=[{capturedAt:obj.updatedAt,method:'manual'}];obj.readingHistory=[];obj.textClips=[];obj.tagSnapshots=obj.tags.length?[{capturedAt:obj.updatedAt,tags:[...obj.tags]}]:[];books.push(obj)
  }
  persist();closeEditor();
 });
 $('search').oninput=render;document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{activeFilter=b.dataset.filter;render()});
 window.editBook=id=>openEditor(books.find(b=>b.id===id));
 window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'mark-read'});persist()};
-window.openBook=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
+window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
 $('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:6,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v3.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
@@ -450,7 +488,7 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.8: one Shortcut, two jobs.
+// v0.9: one Shortcut, two jobs.
 // URL-containing input = register/open a work and remember it as the current work.
 // Text-only input = attach the selected text to the remembered current work.
 function rememberCurrentWork(b){
@@ -476,7 +514,7 @@ function saveSharedText(raw){
   // Avoid an accidental immediate duplicate share.
   const last=b.textClips.at(-1);
   if(!last || last.text!==text || (Date.now()-new Date(last.capturedAt).getTime())>5000){
-    b.textClips.push({text,capturedAt:now,method:'shortcut-selected-text'});
+    b.textClips.push({id:crypto.randomUUID(),text,capturedAt:now,method:'shortcut-selected-text',usedTo:[]});
   }
   b.updatedAt=now;
   b.captures=b.captures||[];

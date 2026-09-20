@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.12.0 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.12.1 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -56,7 +56,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.12.0</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.12.1</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 <div id="intakeDebug" class="notice hidden" style="white-space:pre-wrap;word-break:break-all"></div>
 
@@ -199,6 +199,7 @@ let activeFilter='all';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const jsArg=s=>JSON.stringify(String(s||'')).replace(/&/g,'&amp;').replace(/'/g,'&#39;');
+const uid=()=>{try{return crypto.randomUUID()}catch{return 'yomi-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}};
 const tagArray=v=>Array.isArray(v)?v:String(v||'').split(/[,、#\n]+/).map(x=>x.trim()).filter(Boolean);
 function normalizeUrl(raw){
  try{
@@ -678,14 +679,14 @@ function pickup(raw,{silent=false}={}){
  if(old){
    old.title=old.title||d.title;old.author=old.author||d.author;old.url=d.url||old.url;
    old.source=d.source||old.source;old.sourceType=d.sourceType||old.sourceType;old.sourceId=d.sourceId||old.sourceId;old.sourceKey=d.sourceKey||old.sourceKey;
-   old.updatedAt=new Date().toISOString();old.metadataStatus=metadataState(old);old.captures=old.captures||[];old.captures.push({capturedAt:old.updatedAt,method:'duplicate-intake'});persist();showDuplicate(old);return old
+   old.updatedAt=new Date().toISOString();old.metadataStatus=metadataState(old);old.captures=old.captures||[];old.captures.push({capturedAt:old.updatedAt,method:'duplicate-intake'});persist(false);render();if(!silent)showDuplicate(old);return old
  }
  const now=new Date().toISOString();
- const b={id:crypto.randomUUID(),title:d.title,author:d.author,url:d.url,source:d.source,sourceType:d.sourceType,sourceId:d.sourceId,sourceKey:d.sourceKey,
+ const b={id:uid(),title:d.title,author:d.author,url:d.url,source:d.source,sourceType:d.sourceType,sourceId:d.sourceId,sourceKey:d.sourceKey,
    fandom:'',series:'',seriesUrl:'',tags:[],progress:'',readingStatus:'読書中',metadataStatus:(d.title&&d.author)?'complete':'needsReview',clip:'',memo:'',
-   recap:'',episodeSummary:'',questions:'',charactersText:'',relationsText:'',eventsText:'',favoriteLevel:'',sendToBiblio:false,favoriteParts:'',customSections:[],
+   recap:'',episodeSummary:'',questions:'',charactersText:'',relationsText:'',eventsText:'',favoriteLevel:'',sendToBiblio:false,favoriteParts:'',customSections:[],textClips:[],
    captures:[{capturedAt:now,method:d.title||d.author?'shared-text':'url'}],tagSnapshots:[],readingHistory:[],capturedAt:now,updatedAt:now};
- books.push(b);persist();showToast(d.title?`「${d.title}」を拾ったよ`:'URLを拾ったよ。タイトルはあとでOK');return b
+ books.push(b);persist(false);render();showToast(d.title?`「${d.title}」を拾ったよ`:'URLを拾ったよ。タイトルはあとでOK');return b
 }
 function renderCustomEditor(sections=[]){
  $('customSectionsEditor').innerHTML=sections.map((s,i)=>`<div class="objectCard customEdit" data-i="${i}">
@@ -742,7 +743,7 @@ showWork=function(id){_showWorkBase(id);restoreDetailScroll()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.12.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.12.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function showIntakeDebug(){
  const el=$('intakeDebug'); if(!el)return;
@@ -760,7 +761,7 @@ function acceptQuery(){
  if(!raw&&u)raw=(title||author)?`${title}${author?' | '+author:''} ${u}`:u;
  if(raw){pickup(raw,{silent:true});/* diagnostic: keep query visible */}
 }
-migrate();render();showIntakeDebug();acceptQuery();
+migrate();render();acceptQuery();
 
 // v0.11.8: fixed slot order, same-slot expansion, flexible relation pair input.
 // URL-containing input = register/open a work and remember it as the current work.
@@ -814,7 +815,7 @@ function saveSharedText(raw,destination=null){
   // Avoid an accidental immediate duplicate share.
   const last=b.textClips.at(-1);
   if(!last || last.text!==text || (Date.now()-new Date(last.capturedAt).getTime())>5000){
-    b.textClips.push({id:crypto.randomUUID(),text,capturedAt:now,method:'shortcut-selected-text',usedTo:[]});
+    b.textClips.push({id:uid(),text,capturedAt:now,method:'shortcut-selected-text',usedTo:[]});
   }
   b.updatedAt=now;
   rememberCurrentWork(b);
@@ -824,7 +825,7 @@ function saveSharedText(raw,destination=null){
   return b;
 }
 (function shortcutIntakeBridge(){
-  // v0.12.0: Shortcut intake is handled independently from the ordinary query importer.
+  // v0.12.1: Shortcut intake is handled independently from the ordinary query importer.
   // Accept ?intake= first, with share/text/url fallbacks for older Shortcuts.
   const params=new URLSearchParams(location.search);
   let raw=params.get('intake') || params.get('share') || params.get('text') || '';
@@ -845,9 +846,16 @@ function saveSharedText(raw,destination=null){
     if(parsed.url){
       const b=pickup(raw,{silent:true});
       if(!b){ showToast('作品を受け取れませんでした'); return; }
+      // Verify that the record really reached localStorage before navigating.
+      try{
+        const saved=JSON.parse(localStorage.getItem(KEY)||'[]');
+        if(!saved.some(x=>x.id===b.id || (b.sourceKey&&x.sourceKey===b.sourceKey))){
+          localStorage.setItem(KEY,JSON.stringify(books));
+        }
+      }catch{ localStorage.setItem(KEY,JSON.stringify(books)); }
       rememberCurrentWork(b);
       // Clear the query only after the data has been persisted.
-      /* diagnostic: keep query visible */
+      history.replaceState(null,'',location.pathname+location.hash);
       if(!document.getElementById('duplicateDialog')?.open) showWork(b.id);
       showToast('作品を拾ったよ。この作品を本文の保存先にしました');
       return;

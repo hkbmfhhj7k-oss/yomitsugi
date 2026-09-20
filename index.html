@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.11.1 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.11.2 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -55,7 +55,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupCard{margin:9px 0;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}.groupHead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;cursor:pointer}.groupName{font-weight:800}.groupCount{font-size:10px;color:var(--muted);margin-left:6px}.groupBody{display:none;padding:0 12px 10px}.groupCard.open .groupBody{display:block}.groupEntry{padding:8px 0;border-top:1px solid var(--line)}.groupSlot{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px}.groupText{white-space:pre-wrap;font-size:13px;line-height:1.55}.groupEntryTools{display:none;gap:5px;margin-top:6px}.groupEntry.active .groupEntryTools{display:flex}.groupEntryToggle{background:transparent!important;color:var(--accent)!important;padding:3px 5px!important;font-size:11px}.groupAdd{margin-top:7px;width:100%;background:var(--soft)!important;color:var(--accent)!important}.groupEditBox{margin-top:6px}.groupEditBox textarea{min-height:84px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.11.1</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.11.2</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -245,6 +245,9 @@ function migrate(){
 function persist(redraw=true){localStorage.setItem(KEY,JSON.stringify(books));if(redraw)render()}
 function daysAgo(iso){if(!iso)return '';const d=Math.max(0,Math.floor((Date.now()-new Date(iso))/86400000));return d===0?'今日':`${d}日前`}
 function searchable(b){return [b.title,b.author,b.series,b.fandom,...tagArray(b.tags),b.memo,b.clip,b.progress,b.sourceId].join(' ').toLowerCase()}
+let detailScrollRestore=null;
+function rememberDetailScroll(){detailScrollRestore=window.scrollY}
+function restoreDetailScroll(){if(detailScrollRestore===null)return;const y=detailScrollRestore;detailScrollRestore=null;requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'})))}
 function showToast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');clearTimeout(showToast.t);showToast.t=setTimeout(()=>$('toast').classList.add('hidden'),2200)}
 function renderShelf(){
  $('bookCount').textContent=`${books.length}件`;
@@ -360,14 +363,14 @@ function commitListAdd(id,field){
  const b=books.find(x=>x.id===id), input=document.querySelector(`[data-list-section="${field}"] .quickAdd textarea`);
  if(!b||!input||!input.value.trim())return;
  const lines=splitLines(b[field]);lines.push(input.value.trim());b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();
- persist(false);showWork(id);showToast('追加したよ');
+ persist(false);rememberDetailScroll();showWork(id);showToast('追加したよ');
 }
 function editListItem(id,field,index){
  const b=books.find(x=>x.id===id);if(!b)return;
  const lines=splitLines(b[field]), section=document.querySelector(`[data-list-section="${field}"]`);
  if(!section)return;
  const rows=section.querySelectorAll('.itemRow'), row=rows[index];if(!row)return;
- row.innerHTML=`<textarea class="grow" style="min-height:72px">${esc(lines[index]||'')}</textarea><div class="actions"><button onclick="commitListEdit('${id}','${field}',${index},this)">保存</button><button class="secondary" onclick="showWork('${id}')">取消</button></div>`;
+ row.innerHTML=`<textarea class="grow" style="min-height:72px">${esc(lines[index]||'')}</textarea><div class="actions"><button onclick="commitListEdit('${id}','${field}',${index},this)">保存</button><button class="secondary" onclick="rememberDetailScroll();showWork('${id}')">取消</button></div>`;
  row.querySelector('textarea')?.focus();
 }
 window.commitListEdit=(id,field,index,btn)=>{
@@ -387,7 +390,7 @@ window.deleteListItem=(id,field,index)=>{
  const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),raw=lines[index];if(raw===undefined)return;
  const p=parseStructuredItem(raw),label=p?.name||String(raw).slice(0,40)||'この項目';
  if(!confirm(`「${label}」を削除しますか？\n拾った本文は削除されません。`))return;
- lines.splice(index,1);b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('項目を削除したよ');
+ lines.splice(index,1);b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);rememberDetailScroll();showWork(id);showToast('項目を削除したよ');
 };
 function groupedNotes(raw){
  const lines=splitLines(raw),groups=[],plain=[];
@@ -417,7 +420,7 @@ window.toggleGroupEntry=(ev,field,gi,ii)=>{ev.stopPropagation();document.getElem
 window.editGroupedItem=(id,field,index,key)=>{
  const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),p=parseStructuredItem(lines[index]);if(!p)return;
  const el=document.getElementById('groupEntry_'+key);if(!el)return;
- el.innerHTML=`<div class="groupSlot">${esc(p.name)} › ${esc(p.slot||'メモ')}</div><div class="groupEditBox"><textarea>${esc(p.body)}</textarea><div class="actions"><button type="button" onclick="commitGroupedEdit('${id}','${field}',${index},'${key}')">保存</button><button type="button" class="secondary" onclick="showWork('${id}')">取消</button></div></div>`;
+ el.innerHTML=`<div class="groupSlot">${esc(p.name)} › ${esc(p.slot||'メモ')}</div><div class="groupEditBox"><textarea>${esc(p.body)}</textarea><div class="actions"><button type="button" onclick="commitGroupedEdit('${id}','${field}',${index},'${key}')">保存</button><button type="button" class="secondary" onclick="rememberDetailScroll();showWork('${id}')">取消</button></div></div>`;
  el.querySelector('textarea')?.focus();
 };
 window.commitGroupedEdit=(id,field,index,key)=>{
@@ -431,7 +434,9 @@ window.openStructuredAdd=(id,field)=>{
  pendingRoute={bookId:id,clipId:null,text:'',directPerson:true,directField:field,directName:null,newEntity:true};
  $('routePreview').textContent=`${field==='charactersText'?'登場人物':field==='relationsText'?'関係':'重要イベント'}を追加`;
  $('routeTarget').innerHTML=`<option value="${field}">${field==='charactersText'?'登場人物':field==='relationsText'?'関係':'重要イベント'}</option>`;
- refreshRouteNested();$('routeEntity').value='__new__';$('routeEntity').dispatchEvent(new Event('change'));$('routeEntity').disabled=true;
+ refreshRouteNested();$('routeEntity').value='__new__';$('routeEntity').disabled=true;
+ $('routeEntityNewWrap').classList.remove('hidden');$('routeEntityNew').value='';
+ const cfg2=ROUTE_HIERARCHY[field];$('routeEntityNewLabel').textContent=cfg2?.nameLabel||'名前';$('routeEntityNew').placeholder=cfg2?.placeholder||'新しい項目名';
  $('routeDirectText').classList.remove('hidden');$('routeDirectText').value='';$('routeDialog').showModal();setTimeout(()=>$('routeEntityNew').focus(),0);
 };
 window.openGroupAdd=(id,field,name)=>{
@@ -576,7 +581,7 @@ $('routeConfirm').onclick=()=>{
   const name=(pendingRoute.newEntity?$('routeEntityNew').value:pendingRoute.directName||$('routeEntity').value).trim();
   const text=$('routeDirectText').value.trim();
   if(!name)return showToast('名前を入れてね');if(!text)return showToast('内容を入れてね');
-  const lines=splitLines(b[field]);lines.push(structuredValue(name,$('routeSlot').value,text));b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);closeRouteDialog();showWork(b.id);showToast(name+' を追加したよ');return;
+  const lines=splitLines(b[field]);lines.push(structuredValue(name,$('routeSlot').value,text));b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);rememberDetailScroll();closeRouteDialog();showWork(b.id);showToast(name+' を追加したよ');return;
  }
  const c=clipById(b,pendingRoute.clipId);if(!c)return closeRouteDialog();
  const targetKey=$('routeTarget').value,t=clipTargets(b).find(x=>x[0]===targetKey);if(!t)return;
@@ -678,10 +683,12 @@ $('form').addEventListener('submit',e=>{
 $('search').oninput=render;document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{activeFilter=b.dataset.filter;render()});
 window.editBook=id=>openEditor(books.find(b=>b.id===id));
 window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'mark-read'});persist()};
+const _showWorkBase=showWork;
+showWork=function(id){_showWorkBase(id);restoreDetailScroll()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.2.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
  const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';
@@ -691,7 +698,7 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.11.1: one Shortcut, two jobs.
+// v0.11.2: one Shortcut, two jobs.
 // URL-containing input = register/open a work and remember it as the current work.
 // Text-only input = attach the selected text to the remembered current work.
 function rememberCurrentWork(b){

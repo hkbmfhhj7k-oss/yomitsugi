@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.10.1 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.11.0 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -49,9 +49,13 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 @media(max-width:540px){.seriesStats{grid-template-columns:1fr 1fr}}
 .clipList{margin-top:5px}.clipItem{padding:9px 1px 8px;border-bottom:1px solid var(--line)}.clipItem:last-child{border-bottom:0}.clipText{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;user-select:text;-webkit-user-select:text;line-height:1.55;font-size:13px}.clipItem.expanded .clipText{-webkit-line-clamp:unset;display:block}.clipActions{display:none;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)}.clipItem.active .clipActions{display:block}.clipMeta{display:flex;justify-content:space-between;gap:6px;align-items:center;margin-top:4px}.clipMetaBtns{display:flex;gap:2px;align-items:center}.clipToggle,.clipMore{background:transparent!important;color:var(--accent)!important;padding:3px 5px!important;font-size:11px}.clipUsed{font-size:10px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.clipTools{display:flex;gap:5px;flex-wrap:wrap}.clipTools .miniEdit{font-size:11px!important;padding:5px 7px!important}
 .quickAdd{margin-top:8px;padding:9px;background:var(--bg);border-radius:12px}.quickAdd textarea,.quickAdd input{background:#fff}.routePreview{max-height:150px;overflow:auto;background:var(--bg);padding:10px;border-radius:12px;white-space:pre-wrap;margin:10px 0}.routeSelect{margin-top:8px}
+
+.libraryTabs{display:flex;gap:6px;margin:0 0 10px}.libraryTabs button{flex:1}.libraryTabs button.active{background:var(--accent)!important;color:#fff!important}
+.seriesGrid{display:grid;gap:9px}.seriesIndexCard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:left;width:100%;color:inherit}.seriesIndexCard .seriesName{font-weight:800;font-size:14px}.seriesIndexMeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.groupCard{margin:9px 0;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}.groupHead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;cursor:pointer}.groupName{font-weight:800}.groupCount{font-size:10px;color:var(--muted);margin-left:6px}.groupBody{display:none;padding:0 12px 10px}.groupCard.open .groupBody{display:block}.groupEntry{padding:8px 0;border-top:1px solid var(--line)}.groupSlot{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px}.groupText{white-space:pre-wrap;font-size:13px;line-height:1.55}.groupEntryTools{display:none;gap:5px;margin-top:6px}.groupEntry.active .groupEntryTools{display:flex}.groupEntryToggle{background:transparent!important;color:var(--accent)!important;padding:3px 5px!important;font-size:11px}.groupAdd{margin-top:7px;width:100%;background:var(--soft)!important;color:var(--accent)!important}.groupEditBox{margin-top:6px}.groupEditBox textarea{min-height:84px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.10.1</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.11.0</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -80,12 +84,19 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 </section>
 
 <div id="homeView">
+ <div class="libraryTabs">
+  <button type="button" class="secondary active" id="worksTab">作品</button>
+  <button type="button" class="secondary" id="seriesTab">シリーズ</button>
+ </div>
+ <section id="seriesList" class="hidden"></section>
+ <div id="worksHome">
  <div class="topActions">
   <button class="secondary" id="manualBtn">＋ 手動で追加</button>
   <button class="secondary" id="exportBtn">書き出す</button>
   <label style="margin:0"><span class="buttonlike secondary">読み込む</span><input id="importFile" type="file" accept="application/json" class="hidden"></label>
  </div>
  <section id="list"></section>
+ </div>
 </div>
 <div id="pageView" class="hidden">
  <div class="navbar"><button class="secondary" id="backBtn">← 戻る</button><div class="grow" id="pageNavTitle"></div></div>
@@ -271,10 +282,41 @@ function render(){
  }).sort((a,b)=>(b.lastRead||b.capturedAt||'').localeCompare(a.lastRead||a.capturedAt||''));
  $('list').innerHTML=arr.length?arr.map(compactCard).join(''):'<div class="empty">該当する記録はありません。</div>';
 }
+
+let homeMode='works';
+function seriesGroups(){
+ const map=new Map();
+ books.filter(b=>String(b.series||'').trim()).forEach(b=>{
+  const name=String(b.series).trim();if(!map.has(name))map.set(name,[]);
+  map.get(name).push(b);
+ });
+ return [...map.entries()].sort((a,b)=>{
+  const ad=Math.max(...a[1].map(x=>Date.parse(x.lastRead||x.updatedAt||x.capturedAt||0)||0));
+  const bd=Math.max(...b[1].map(x=>Date.parse(x.lastRead||x.updatedAt||x.capturedAt||0)||0));
+  return bd-ad||a[0].localeCompare(b[0],'ja');
+ });
+}
+function renderSeriesIndex(){
+ const groups=seriesGroups();
+ $('seriesList').innerHTML=groups.length?`<div class="seriesGrid">${groups.map(([name,items])=>{
+  const latest=[...items].sort((a,b)=>(b.lastRead||b.updatedAt||b.capturedAt||'').localeCompare(a.lastRead||a.updatedAt||a.capturedAt||''))[0];
+  const read=items.filter(x=>x.readingStatus==='読了').length;
+  const author=items.find(x=>x.author)?.author||'';
+  return `<button type="button" class="seriesIndexCard" onclick="showSeriesByName(${JSON.stringify(name).replace(/"/g,'&quot;')})"><div class="seriesName">${esc(name)}</div>${author?`<div class="tiny">${esc(author)}</div>`:''}<div class="seriesIndexMeta"><span class="pill">${items.length}話</span>${read?`<span class="tiny">読了 ${read}</span>`:''}${latest?`<span class="tiny">最終 ${daysAgo(latest.lastRead||latest.updatedAt||latest.capturedAt)}</span>`:''}</div></button>`;
+ }).join('')}</div>`:'<div class="empty">シリーズ登録された作品はまだありません。</div>';
+}
+function setHomeMode(mode){
+ homeMode=mode==='series'?'series':'works';
+ $('worksHome').classList.toggle('hidden',homeMode!=='works');
+ $('seriesList').classList.toggle('hidden',homeMode!=='series');
+ $('worksTab').classList.toggle('active',homeMode==='works');
+ $('seriesTab').classList.toggle('active',homeMode==='series');
+ if(homeMode==='series')renderSeriesIndex();else render();
+}
 function showHome(){
  $('pageView').classList.add('hidden');$('homeView').classList.remove('hidden');
  document.querySelectorAll('main > .panel').forEach(x=>x.classList.remove('hidden'));
- render();scrollTo({top:0,behavior:'instant'});
+ setHomeMode(homeMode);scrollTo({top:0,behavior:'instant'});
 }
 function showPage(title,body){
  document.querySelectorAll('main > .panel').forEach(x=>x.classList.add('hidden'));
@@ -334,20 +376,20 @@ window.commitListEdit=(id,field,index,btn)=>{
 };
 function parseStructuredItem(raw){
  const text=String(raw||'');if(!text.startsWith('§'))return null;
- const p=text.slice(1).split('§');return {name:p[0]||'',slot:p[1]||'',body:p.slice(2).join('§')||''};
+ const p=text.slice(1).split('§');return {name:p[0]||'',slot:p[1]||'',body:(p.slice(2).join('§')||'').replaceAll('↵','\n')};
 }
 function renderStructuredItem(raw){
  const p=parseStructuredItem(raw);if(!p)return esc(raw);
  return `<div class="nestedTitle">${esc(p.name)}${p.slot?` <span class="tiny">› ${esc(p.slot)}</span>`:''}</div>${p.body?`<div class="nestedBody">${esc(p.body)}</div>`:''}`;
 }
-function structuredValue(name,slot,body){name=String(name||'').trim();slot=String(slot||'').trim();body=String(body||'').trim();return name?`§${name}§${slot}§${body}`:body}
+function structuredValue(name,slot,body){name=String(name||'').trim();slot=String(slot||'').trim();body=String(body||'').trim().replace(/\r?\n/g,'↵');return name?`§${name}§${slot}§${body}`:body}
 window.deleteListItem=(id,field,index)=>{
  const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),raw=lines[index];if(raw===undefined)return;
  const p=parseStructuredItem(raw),label=p?.name||String(raw).slice(0,40)||'この項目';
  if(!confirm(`「${label}」を削除しますか？\n拾った本文は削除されません。`))return;
  lines.splice(index,1);b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('項目を削除したよ');
 };
-function groupedPeople(raw){
+function groupedNotes(raw){
  const lines=splitLines(raw),groups=[],plain=[];
  lines.forEach((x,index)=>{const p=parseStructuredItem(x);if(!p?.name){plain.push({raw:x,index});return}
   let g=groups.find(z=>z.name===p.name);if(!g){g={name:p.name,items:[]};groups.push(g)}
@@ -355,24 +397,36 @@ function groupedPeople(raw){
  });
  return {groups,plain};
 }
-function personSection(id,field,title){
- const b=books.find(x=>x.id===id),data=groupedPeople(b?.[field]);
- const groups=data.groups.map((g,gi)=>`<div class="personCard" id="person_${field}_${gi}">
-  <div class="personHead" onclick="togglePersonCard('${field}',${gi})"><div><span class="personName">${esc(g.name)}</span><span class="personCount">${g.items.length}件</span></div><span>⌄</span></div>
-  <div class="personBody">${g.items.map((it,ii)=>`<div class="personEntry" id="personEntry_${field}_${gi}_${ii}">
-    <div class="personSlot">${esc(it.slot||'メモ')}</div><div class="personText">${esc(it.body||'')}</div>
-    <button type="button" class="personEntryToggle" onclick="togglePersonEntry(event,'${field}',${gi},${ii})">操作</button>
-    <div class="personEntryTools"><button type="button" class="miniEdit" onclick="editListItem('${id}','${field}',${it.index})">✎ 編集</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div>
+function groupedSection(id,field,title,noun){
+ const b=books.find(x=>x.id===id),data=groupedNotes(b?.[field]);
+ const groups=data.groups.map((g,gi)=>`<div class="groupCard" id="group_${field}_${gi}">
+  <div class="groupHead" onclick="toggleGroupCard('${field}',${gi})"><div><span class="groupName">${esc(g.name)}</span><span class="groupCount">${g.items.length}件</span></div><span>⌄</span></div>
+  <div class="groupBody">${g.items.map((it,ii)=>`<div class="groupEntry" id="groupEntry_${field}_${gi}_${ii}">
+    <div class="groupSlot">${esc(it.slot||'メモ')}</div><div class="groupText">${esc(it.body||'')}</div>
+    <button type="button" class="groupEntryToggle" onclick="toggleGroupEntry(event,'${field}',${gi},${ii})">操作</button>
+    <div class="groupEntryTools"><button type="button" class="miniEdit" onclick="editGroupedItem('${id}','${field}',${it.index},'${field}_${gi}_${ii}')">✎ 編集</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div>
    </div>`).join('')}
-   <button type="button" class="personAdd" onclick="openPersonAdd('${id}','${field}',${JSON.stringify(g.name).replace(/"/g,'&quot;')})">＋ この人物に追加</button>
+   <button type="button" class="groupAdd" onclick="openGroupAdd('${id}','${field}',${JSON.stringify(g.name).replace(/"/g,'&quot;')})">＋ この${esc(noun)}に追加</button>
   </div></div>`).join('');
  const plain=data.plain.length?`<div class="tiny" style="margin-top:9px">未分類</div>`+data.plain.map(it=>`<div class="itemRow"><div class="objectCard">${esc(it.raw)}</div><div class="itemActions"><button type="button" class="miniEdit" onclick="editListItem('${id}','${field}',${it.index})">✎</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div></div>`).join(''):'';
  return `<section class="detailSection" data-list-section="${field}"><div class="inlineHead"><h3>${esc(title)}</h3><button type="button" class="miniEdit" onclick="openListAdd('${id}','${field}')">＋</button></div>${groups||plain?groups+plain:'<div class="tiny">まだありません</div>'}
  <div class="quickAdd hidden"><textarea placeholder="${esc(title)}を追加"></textarea><div class="actions"><button type="button" onclick="commitListAdd('${id}','${field}')">追加</button><button type="button" class="secondary" onclick="this.closest('.quickAdd').classList.add('hidden')">閉じる</button></div></div></section>`;
 }
-window.togglePersonCard=(field,gi)=>document.getElementById(`person_${field}_${gi}`)?.classList.toggle('open');
-window.togglePersonEntry=(ev,field,gi,ii)=>{ev.stopPropagation();document.getElementById(`personEntry_${field}_${gi}_${ii}`)?.classList.toggle('active')};
-window.openPersonAdd=(id,field,name)=>{
+function personSection(id,field,title){return groupedSection(id,field,title,'人物')}
+window.toggleGroupCard=(field,gi)=>document.getElementById(`group_${field}_${gi}`)?.classList.toggle('open');
+window.toggleGroupEntry=(ev,field,gi,ii)=>{ev.stopPropagation();document.getElementById(`groupEntry_${field}_${gi}_${ii}`)?.classList.toggle('active')};
+window.editGroupedItem=(id,field,index,key)=>{
+ const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),p=parseStructuredItem(lines[index]);if(!p)return;
+ const el=document.getElementById('groupEntry_'+key);if(!el)return;
+ el.innerHTML=`<div class="groupSlot">${esc(p.name)} › ${esc(p.slot||'メモ')}</div><div class="groupEditBox"><textarea>${esc(p.body)}</textarea><div class="actions"><button type="button" onclick="commitGroupedEdit('${id}','${field}',${index},'${key}')">保存</button><button type="button" class="secondary" onclick="showWork('${id}')">取消</button></div></div>`;
+ el.querySelector('textarea')?.focus();
+};
+window.commitGroupedEdit=(id,field,index,key)=>{
+ const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),p=parseStructuredItem(lines[index]),el=document.getElementById('groupEntry_'+key),v=el?.querySelector('textarea')?.value.trim();if(!p||v===undefined)return;
+ if(v)lines[index]=structuredValue(p.name,p.slot,v);else lines.splice(index,1);
+ b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('保存したよ');
+};
+window.openGroupAdd=(id,field,name)=>{
  const b=books.find(x=>x.id===id);if(!b)return;
  pendingRoute={bookId:id,clipId:null,text:'',directPerson:true,directField:field,directName:name};
  $('routePreview').textContent=`${name} に新しいメモを追加`;
@@ -380,6 +434,7 @@ window.openPersonAdd=(id,field,name)=>{
  refreshRouteNested();$('routeEntity').value=name;$('routeEntity').dispatchEvent(new Event('change'));$('routeEntity').disabled=true;
  $('routeDirectText').classList.remove('hidden');$('routeDirectText').value='';$('routeDialog').showModal();setTimeout(()=>$('routeDirectText').focus(),0);
 };
+window.openPersonAdd=window.openGroupAdd;
 function listSection(id,field,title){
  const b=books.find(x=>x.id===id), lines=splitLines(b[field]);
  return `<section class="detailSection" data-list-section="${field}"><div class="inlineHead"><h3>${esc(title)}</h3><button type="button" class="miniEdit" onclick="openListAdd('${id}','${field}')">＋</button></div>
@@ -442,8 +497,8 @@ window.showWork=id=>{
   <section class="detailSection" data-section="recap"><div class="inlineHead"><h3>前回まで</h3><button class="miniEdit" onclick="editField('${b.id}','recap','前回まで')">✎</button></div><div>${b.recap?esc(b.recap):'<span class="tiny">まだありません</span>'}</div></section>
   <section class="detailSection" data-section="episodeSummary"><div class="inlineHead"><h3>今回起きたこと</h3><button class="miniEdit" onclick="editField('${b.id}','episodeSummary','今回起きたこと')">✎</button></div><div>${b.episodeSummary?esc(b.episodeSummary):'<span class="tiny">まだありません</span>'}</div></section>
   ${personSection(b.id,'charactersText','登場人物')}
-  ${listSection(b.id,'relationsText','関係')}
-  ${listSection(b.id,'eventsText','重要イベント')}
+  ${groupedSection(b.id,'relationsText','関係','関係')}
+  ${groupedSection(b.id,'eventsText','重要イベント','イベント')}
   ${listSection(b.id,'questions','気になること')}
   <section class="detailSection" data-section="memo"><div class="inlineHead"><h3>メモ・感想</h3><button class="miniEdit" onclick="editField('${b.id}','memo','メモ・感想')">✎</button></div><div>${b.memo?esc(b.memo):'<span class="tiny">まだありません</span>'}</div></section>
   ${custom}
@@ -588,6 +643,7 @@ $('duplicateEdit').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);$(
 $('duplicateTouch').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);if(b){b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'mark-read'});persist();$('duplicatePreview').innerHTML=duplicateCard(b);showToast('読書日時を更新したよ')}};
 $('duplicateContinue').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId);if(b&&b.url){rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')}};
 
+$('worksTab').onclick=()=>setHomeMode('works');$('seriesTab').onclick=()=>setHomeMode('series');
 $('pickupBtn').onclick=()=>{const raw=$('quickInput').value.trim();if(pickup(raw))$('quickInput').value=''};
 $('manualBtn').onclick=()=>openEditor();$('backBtn').onclick=showHome;$('addCustomSectionBtn').onclick=()=>{const wrap=document.createElement('div');wrap.className='objectCard customEdit';wrap.innerHTML='<input class="customTitle" placeholder="項目名"><textarea class="customItems" placeholder="1行＝1項目"></textarea><button type="button" class="ghost customRemove">この項目を削除</button>';wrap.querySelector('.customRemove').onclick=()=>wrap.remove();$('customSectionsEditor').appendChild(wrap)};$('closeBtn').onclick=closeEditor;$('cancelBtn').onclick=closeEditor;
 $('form').addEventListener('submit',e=>{
@@ -614,7 +670,7 @@ window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toIS
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.10.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
  const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';
@@ -624,7 +680,7 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.10.1: one Shortcut, two jobs.
+// v0.11.0: one Shortcut, two jobs.
 // URL-containing input = register/open a work and remember it as the current work.
 // Text-only input = attach the selected text to the remembered current work.
 function rememberCurrentWork(b){

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.9.1 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.9.2 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -46,11 +46,11 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .clipTools{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.clipUsed{font-size:11px;color:var(--muted);margin-top:7px}
 .seriesStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.seriesStat{background:var(--bg);border-radius:12px;padding:10px;text-align:center}.seriesStat b{display:block;font-size:18px}
 @media(max-width:540px){.seriesStats{grid-template-columns:1fr 1fr}}
-.clipCard{padding:9px 10px}.clipCard .clipText{max-height:8.5em;overflow:auto}.clipActions{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}.clipCard.active .clipActions{display:block}.clipHint{display:flex;justify-content:space-between;gap:8px;align-items:center}.clipToggle{background:transparent!important;color:var(--accent)!important;padding:4px 6px!important;font-size:11px}
+.clipList{margin-top:5px}.clipItem{padding:9px 1px 8px;border-bottom:1px solid var(--line)}.clipItem:last-child{border-bottom:0}.clipText{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;white-space:pre-wrap;user-select:text;-webkit-user-select:text;line-height:1.55;font-size:13px}.clipItem.expanded .clipText{-webkit-line-clamp:unset;display:block}.clipActions{display:none;margin-top:7px;padding-top:7px;border-top:1px dashed var(--line)}.clipItem.active .clipActions{display:block}.clipMeta{display:flex;justify-content:space-between;gap:6px;align-items:center;margin-top:4px}.clipMetaBtns{display:flex;gap:2px;align-items:center}.clipToggle,.clipMore{background:transparent!important;color:var(--accent)!important;padding:3px 5px!important;font-size:11px}.clipUsed{font-size:10px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.clipTools{display:flex;gap:5px;flex-wrap:wrap}.clipTools .miniEdit{font-size:11px!important;padding:5px 7px!important}
 .quickAdd{margin-top:8px;padding:9px;background:var(--bg);border-radius:12px}.quickAdd textarea,.quickAdd input{background:#fff}.routePreview{max-height:150px;overflow:auto;background:var(--bg);padding:10px;border-radius:12px;white-space:pre-wrap;margin:10px 0}.routeSelect{margin-top:8px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.9.1</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.9.2</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -299,7 +299,7 @@ function editField(id,field,label,multiline=true){
 }
 window.saveInline=(id,field)=>saveWorkField(id,field,$(`inline_${field}`).value.trim());
 
-function openListAdd(id,field,label){
+function openListAdd(id,field){
  const box=document.querySelector(`[data-list-section="${field}"] .quickAdd`);
  if(!box)return;
  document.querySelectorAll('.quickAdd').forEach(x=>{if(x!==box)x.classList.add('hidden')});
@@ -312,7 +312,7 @@ function commitListAdd(id,field){
  const lines=splitLines(b[field]);lines.push(input.value.trim());b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();
  persist(false);showWork(id);showToast('追加したよ');
 }
-function editListItem(id,field,index,label){
+function editListItem(id,field,index){
  const b=books.find(x=>x.id===id);if(!b)return;
  const lines=splitLines(b[field]), section=document.querySelector(`[data-list-section="${field}"]`);
  if(!section)return;
@@ -326,9 +326,9 @@ window.commitListEdit=(id,field,index,btn)=>{
 };
 function listSection(id,field,title){
  const b=books.find(x=>x.id===id), lines=splitLines(b[field]);
- return `<section class="detailSection" data-list-section="${field}"><div class="inlineHead"><h3>${esc(title)}</h3><button class="miniEdit" onclick="openListAdd('${id}','${field}',${JSON.stringify(title)})">＋</button></div>
- ${lines.length?lines.map((x,i)=>`<div class="itemRow"><div class="objectCard">${esc(x)}</div><button class="miniEdit" onclick="editListItem('${id}','${field}',${i},${JSON.stringify(title)})">✎</button></div>`).join(''):'<div class="tiny">まだありません</div>'}
- <div class="quickAdd hidden"><textarea placeholder="${esc(title)}を追加"></textarea><div class="actions"><button onclick="commitListAdd('${id}','${field}')">追加</button><button class="secondary" onclick="this.closest('.quickAdd').classList.add('hidden')">閉じる</button></div></div></section>`;
+ return `<section class="detailSection" data-list-section="${field}"><div class="inlineHead"><h3>${esc(title)}</h3><button type="button" class="miniEdit" onclick="openListAdd('${id}','${field}')">＋</button></div>
+ ${lines.length?lines.map((x,i)=>`<div class="itemRow"><div class="objectCard">${esc(x)}</div><button type="button" class="miniEdit" onclick="editListItem('${id}','${field}',${i})">✎</button></div>`).join(''):'<div class="tiny">まだありません</div>'}
+ <div class="quickAdd hidden"><textarea placeholder="${esc(title)}を追加"></textarea><div class="actions"><button type="button" onclick="commitListAdd('${id}','${field}')">追加</button><button type="button" class="secondary" onclick="this.closest('.quickAdd').classList.add('hidden')">閉じる</button></div></div></section>`;
 }
 function addCustomSectionInline(id){
  const b=books.find(x=>x.id===id);if(!b)return;
@@ -377,12 +377,12 @@ window.showWork=id=>{
 
   <section class="detailSection"><div class="inlineHead"><h3>拾った本文</h3><span class="tiny">${(b.textClips||[]).length}件</span></div>
   <div class="tiny">普段は本文だけ。使いたい文章を選択するか「操作」を押すとメニューが開きます。</div>
-  ${(b.textClips||[]).length?(b.textClips||[]).slice().reverse().map(c=>`<div class="objectCard clipCard" id="clip_${esc(c.id||'')}">
+  ${(b.textClips||[]).length?`<div class="clipList">`+(b.textClips||[]).slice().reverse().map(c=>`<div class="clipItem" id="clip_${esc(c.id||'')}">
     <div class="clipText" data-clip-id="${esc(c.id||'')}" onpointerup="clipSelectionChanged('${b.id}','${c.id||''}',this)" ontouchend="setTimeout(()=>clipSelectionChanged('${b.id}','${c.id||''}',this),80)">${esc(c.text)}</div>
-    <div class="clipHint"><div class="tiny">${new Date(c.capturedAt).toLocaleString('ja-JP')}</div><button class="clipToggle" onclick="toggleClipActions('${c.id||''}')">操作</button></div>
+    <div class="clipMeta"><div class="tiny">${new Date(c.capturedAt).toLocaleString('ja-JP')}</div><div class="clipMetaBtns"><button type="button" class="clipMore" onclick="toggleClipExpand('${c.id||''}')">もっと見る</button><button type="button" class="clipToggle" onclick="toggleClipActions('${c.id||''}')">操作</button></div></div>
     ${(c.usedTo||[]).length?`<div class="clipUsed">使用先：${(c.usedTo||[]).map(x=>esc(x)).join('・')}</div>`:''}
-    <div class="clipActions"><div class="clipTools"><button class="miniEdit" onclick="useClipText('${b.id}','${c.id||''}')">選択部分を使う</button><button class="miniEdit" onclick="useWholeClip('${b.id}','${c.id||''}')">全文を使う</button><button class="miniEdit dangerBtn" onclick="deleteTextClip('${b.id}','${c.id||''}')">削除</button></div></div>
-  </div>`).join(''):'<div class="tiny">まだありません</div>'}</section>
+    <div class="clipActions"><div class="clipTools"><button type="button" class="miniEdit" onclick="useClipText('${b.id}','${c.id||''}')">選択部分を使う</button><button type="button" class="miniEdit" onclick="useWholeClip('${b.id}','${c.id||''}')">全文を使う</button><button type="button" class="miniEdit dangerBtn" onclick="deleteTextClip('${b.id}','${c.id||''}')">削除</button></div></div>
+  </div>`).join('')+`</div>`:'<div class="tiny">まだありません</div>'}</section>
   <section class="detailSection" data-section="recap"><div class="inlineHead"><h3>前回まで</h3><button class="miniEdit" onclick="editField('${b.id}','recap','前回まで')">✎</button></div><div>${b.recap?esc(b.recap):'<span class="tiny">まだありません</span>'}</div></section>
   <section class="detailSection" data-section="episodeSummary"><div class="inlineHead"><h3>今回起きたこと</h3><button class="miniEdit" onclick="editField('${b.id}','episodeSummary','今回起きたこと')">✎</button></div><div>${b.episodeSummary?esc(b.episodeSummary):'<span class="tiny">まだありません</span>'}</div></section>
   ${listSection(b.id,'charactersText','登場人物')}
@@ -411,6 +411,11 @@ window.showSeriesByName=name=>{
 }
 let savedClipSelection='', pendingRoute=null;
 window.toggleClipActions=clipId=>{const el=document.getElementById('clip_'+clipId);if(el)el.classList.toggle('active')};
+window.toggleClipExpand=clipId=>{
+ const el=document.getElementById('clip_'+clipId);if(!el)return;
+ el.classList.toggle('expanded');
+ const btn=el.querySelector('.clipMore');if(btn)btn.textContent=el.classList.contains('expanded')?'閉じる':'もっと見る';
+};
 window.clipSelectionChanged=(id,clipId,el)=>{
  const sel=window.getSelection();const text=String(sel?.toString()||'').trim();if(!text)return;
  try{const range=sel.getRangeAt(0);if(!el.contains(range.commonAncestorContainer))return}catch{return}
@@ -526,7 +531,7 @@ window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toIS
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:7,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.9.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:7,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.9.2.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
  const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';
@@ -536,7 +541,7 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.9.1: one Shortcut, two jobs.
+// v0.9.2: one Shortcut, two jobs.
 // URL-containing input = register/open a work and remember it as the current work.
 // Text-only input = attach the selected text to the remembered current work.
 function rememberCurrentWork(b){

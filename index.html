@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.11.5 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.11.8 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -56,7 +56,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.11.5</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.11.8</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -751,7 +751,7 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.11.5: fixed slot order, same-slot expansion, flexible relation pair input.
+// v0.11.8: fixed slot order, same-slot expansion, flexible relation pair input.
 // URL-containing input = register/open a work and remember it as the current work.
 // Text-only input = attach the selected text to the remembered current work.
 function rememberCurrentWork(b){

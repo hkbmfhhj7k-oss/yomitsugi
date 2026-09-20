@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.13.0 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.14.0 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -56,7 +56,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 </style>
 </head><body><main>
- <div class="brand">Yomitsugi <span class="tiny">v0.13.0</span></div>
+ <div class="brand">Yomitsugi <span class="tiny">v0.14.0</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 <div id="intakeDebug" class="notice hidden" style="white-space:pre-wrap;word-break:break-all"></div>
 
@@ -359,9 +359,74 @@ function migrate(){
     favoriteLevel:b.favoriteLevel||'',sendToBiblio:!!b.sendToBiblio,favoriteParts:b.favoriteParts||'',customSections:Array.isArray(b.customSections)?b.customSections:[],
     textClips:Array.isArray(b.textClips)?b.textClips.map((c,i)=>({...c,id:c.id||('clip-'+i+'-'+(c.capturedAt||'')),usedTo:Array.isArray(c.usedTo)?c.usedTo:[]})):[]}
  });
- persist(false);
+ localStorage.setItem(KEY,JSON.stringify(books));
 }
-function persist(redraw=true){localStorage.setItem(KEY,JSON.stringify(books));if(redraw)render()}
+let d1SyncTimer=null;
+let d1SyncRunning=false;
+let d1SyncPending=false;
+
+function queueD1Writeback(){
+ const token=getD1Token();
+ if(!token)return;
+ clearTimeout(d1SyncTimer);
+ d1SyncTimer=setTimeout(()=>syncBooksToD1(),650);
+}
+
+async function saveWorkToD1(work){
+ const token=getD1Token();
+ if(!token||!work)return null;
+ const r=await fetch(YOMITSUGI_API+'/library/save',{
+  method:'POST',
+  headers:{
+   'Authorization':'Bearer '+token,
+   'Content-Type':'application/json'
+  },
+  body:JSON.stringify({work})
+ });
+ let data=null;
+ try{data=await r.json()}catch{}
+ if(!r.ok||!data?.ok)throw new Error(data?.error||('HTTP '+r.status));
+ return data;
+}
+
+async function syncBooksToD1(){
+ if(!getD1Token())return;
+ if(d1SyncRunning){d1SyncPending=true;return}
+ d1SyncRunning=true;
+ d1SyncPending=false;
+ try{
+  setDbStatus('D1へ保存中…');
+  for(let i=0;i<books.length;i++){
+   const b=books[i];
+   const result=await saveWorkToD1(b);
+   if(result?.id&&result.id!==b.id){
+    const oldId=b.id;
+    b.id=result.id;
+    try{
+     const current=localStorage.getItem(CURRENT_KEY);
+     if(current===oldId)localStorage.setItem(CURRENT_KEY,result.id);
+    }catch{}
+   }
+  }
+  localStorage.setItem(KEY,JSON.stringify(books));
+  setDbStatus('D1接続中・保存済み');
+ }catch(e){
+  console.error('D1 write-back failed',e);
+  setDbStatus('端末保存済み・D1保存待ち');
+ }finally{
+  d1SyncRunning=false;
+  if(d1SyncPending){
+   d1SyncPending=false;
+   queueD1Writeback();
+  }
+ }
+}
+
+function persist(redraw=true){
+ localStorage.setItem(KEY,JSON.stringify(books));
+ if(redraw)render();
+ queueD1Writeback();
+}
 function daysAgo(iso){if(!iso)return '';const d=Math.max(0,Math.floor((Date.now()-new Date(iso))/86400000));return d===0?'今日':`${d}日前`}
 function searchable(b){return [b.title,b.author,b.series,b.fandom,...tagArray(b.tags),b.memo,b.clip,b.progress,b.sourceId].join(' ').toLowerCase()}
 let detailScrollRestore=null;

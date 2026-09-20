@@ -111,6 +111,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
   <input id="source" type="hidden"><input id="sourceType" type="hidden"><input id="sourceId" type="hidden">
   <div class="grid"><div><label>作者</label><input id="author"></div><div><label>原作</label><input id="fandom"></div></div>
   <div><label>シリーズ名</label><input id="series"></div>
+  <div><label>シリーズURL</label><input id="seriesUrl" type="url" placeholder="https://www.pixiv.net/novel/series/..."></div>
   <div><label>単話タイトル</label><input id="title" placeholder="未取得でも保存できます"></div>
   <div><label>URL</label><input id="url" type="url"></div>
   <div><label>取得時タグ</label><input id="tags" placeholder="例：糸師冴, 幼馴染, パロディ"></div>
@@ -210,6 +211,8 @@ function sourceInfo(raw){
   if(/(^|\.)pixiv\.net$/i.test(u.hostname)||/\.pixiv\.net$/i.test(u.hostname)){
    const m=u.pathname.match(/\/novel\/show\.php$/i), id=u.searchParams.get('id');
    if(m&&id)return {source:'pixiv',sourceType:'novel',sourceId:id,sourceKey:`pixiv:novel:${id}`};
+   const sm=u.pathname.match(/\/novel\/series\/(\d+)/i);
+   if(sm)return {source:'pixiv',sourceType:'novel-series',sourceId:sm[1],sourceKey:`pixiv:novel-series:${sm[1]}`};
   }
   return {source:u.hostname,sourceType:'web',sourceId:'',sourceKey:normalizeUrl(raw)};
  }catch{return {source:'',sourceType:'web',sourceId:'',sourceKey:normalizeUrl(raw)}}
@@ -233,6 +236,7 @@ function migrate(){
  books=books.map(b=>{
   const si=sourceInfo(b.url||'');
   let readingStatus=b.readingStatus||b.status||'読書中';
+  b.seriesUrl=b.seriesUrl||'';
   let metadataStatus=b.metadataStatus;
   if(readingStatus==='未整理'){readingStatus='読書中';metadataStatus='needsReview'}
   return {...b,tags:tagArray(b.tags),readingStatus,metadataStatus:metadataStatus||metadataState(b),
@@ -515,9 +519,10 @@ window.showWork=id=>{
  showPage(b.title||'作品詳細',`
   <section class="hero panel">
    <div class="basicLine">
-    <div class="tiny grow">${b.fandom?esc(b.fandom)+' / ':''}${b.series?`<button class="linkish" onclick="showSeriesByName(${JSON.stringify(b.series)})">シリーズ：${esc(b.series)} ＞</button>`:''}</div>
+    <div class="tiny grow">${b.fandom?esc(b.fandom)+' / ':''}${b.series?`<button class="linkish" onclick="showSeriesByName(${JSON.stringify(b.series)})">シリーズ：${esc(b.series)} ＞</button>`:''}${b.seriesUrl?` <button class="linkish" onclick="window.open(${JSON.stringify(b.seriesUrl)},'_blank')">元シリーズ ↗</button>`:''}</div>
     <button class="miniEdit" onclick="quickField('${b.id}','fandom','原作')">原作 ✎</button>
     <button class="miniEdit" onclick="quickField('${b.id}','series','シリーズ')">シリーズ ✎</button>
+    <button class="miniEdit" onclick="quickField('${b.id}','seriesUrl','シリーズURL')">URL ✎</button>
    </div>
    <div data-section="title"><div class="basicLine"><h1 class="grow">${esc(b.title||'タイトル未取得')}</h1><button class="miniEdit" onclick="editField('${b.id}','title','タイトル',false)">✎</button></div></div>
    <div data-section="author"><div class="basicLine"><div class="author grow">${esc(b.author||'作者未取得')}</div><button class="miniEdit" onclick="editField('${b.id}','author','作者',false)">✎</button></div></div>
@@ -549,11 +554,11 @@ window.showWork=id=>{
 }
 window.showSeriesByName=name=>{
  const items=books.filter(b=>b.series===name).sort((a,b)=>(a.capturedAt||'').localeCompare(b.capturedAt||''));
- const author=items.find(x=>x.author)?.author||'', fandom=items.find(x=>x.fandom)?.fandom||'';
+ const author=items.find(x=>x.author)?.author||'', fandom=items.find(x=>x.fandom)?.fandom||'', seriesUrl=items.find(x=>x.seriesUrl)?.seriesUrl||'';
  const tags=[...new Set(items.flatMap(x=>tagArray(x.tags)))], clips=items.reduce((n,x)=>n+(x.textClips||[]).length,0), read=items.filter(x=>x.readingStatus==='読了').length;
  const latest=[...items].sort((a,b)=>(b.lastRead||b.updatedAt||'').localeCompare(a.lastRead||a.updatedAt||''))[0];
  const recaps=items.filter(x=>x.recap||x.episodeSummary||x.eventsText);
- showPage(name,`<section class="hero panel"><div class="tiny">SERIES</div><h1>${esc(name)}</h1><div class="author">${esc(author)}${fandom?' ・ '+esc(fandom):''}</div>
+ showPage(name,`<section class="hero panel"><div class="tiny">SERIES</div><h1>${esc(name)}</h1><div class="author">${esc(author)}${fandom?' ・ '+esc(fandom):''}</div>${seriesUrl?`<div class="actions"><button onclick="window.open(${JSON.stringify(seriesUrl)},'_blank')">元のシリーズを開く ↗</button></div>`:''}
  <div>${tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>
  <div class="seriesStats"><div class="seriesStat"><b>${items.length}</b><span class="tiny">登録作品</span></div><div class="seriesStat"><b>${read}</b><span class="tiny">読了</span></div><div class="seriesStat"><b>${clips}</b><span class="tiny">拾った本文</span></div></div>
  ${latest?`<div class="tiny" style="margin-top:10px">最後に触った作品：${esc(latest.title||'タイトル未取得')} ・ ${daysAgo(latest.lastRead||latest.updatedAt)}</div>`:''}</section>
@@ -675,7 +680,7 @@ function pickup(raw,{silent=false}={}){
  }
  const now=new Date().toISOString();
  const b={id:crypto.randomUUID(),title:d.title,author:d.author,url:d.url,source:d.source,sourceType:d.sourceType,sourceId:d.sourceId,sourceKey:d.sourceKey,
-   fandom:'',series:'',tags:[],progress:'',readingStatus:'読書中',metadataStatus:(d.title&&d.author)?'complete':'needsReview',clip:'',memo:'',
+   fandom:'',series:'',seriesUrl:'',tags:[],progress:'',readingStatus:'読書中',metadataStatus:(d.title&&d.author)?'complete':'needsReview',clip:'',memo:'',
    recap:'',episodeSummary:'',questions:'',charactersText:'',relationsText:'',eventsText:'',favoriteLevel:'',sendToBiblio:false,favoriteParts:'',customSections:[],
    captures:[{capturedAt:now,method:d.title||d.author?'shared-text':'url'}],tagSnapshots:[],readingHistory:[],capturedAt:now,updatedAt:now};
  books.push(b);persist();showToast(d.title?`「${d.title}」を拾ったよ`:'URLを拾ったよ。タイトルはあとでOK');return b
@@ -693,7 +698,7 @@ function readCustomEditor(){
 }
 function openEditor(b={}){
  $('modalTitle').textContent=b.id?'作品を編集':'作品を追加';
- ['id','author','fandom','series','title','url','progress','readingStatus','clip','memo','source','sourceType','sourceId','recap','episodeSummary','questions','charactersText','relationsText','eventsText','favoriteLevel','favoriteParts'].forEach(k=>$(k).value=b[k]||(k==='readingStatus'?'読書中':''));
+ ['id','author','fandom','series','seriesUrl','title','url','progress','readingStatus','clip','memo','source','sourceType','sourceId','recap','episodeSummary','questions','charactersText','relationsText','eventsText','favoriteLevel','favoriteParts'].forEach(k=>$(k).value=b[k]||(k==='readingStatus'?'読書中':''));
  $('sendToBiblio').value=b.sendToBiblio?'true':'false';
  $('tags').value=tagArray(b.tags).join(', ');
  renderCustomEditor(b.customSections||[]);
@@ -711,7 +716,7 @@ $('pickupBtn').onclick=()=>{const raw=$('quickInput').value.trim();if(pickup(raw
 $('manualBtn').onclick=()=>openEditor();$('backBtn').onclick=showHome;$('addCustomSectionBtn').onclick=()=>{const wrap=document.createElement('div');wrap.className='objectCard customEdit';wrap.innerHTML='<input class="customTitle" placeholder="項目名"><textarea class="customItems" placeholder="1行＝1項目"></textarea><button type="button" class="ghost customRemove">この項目を削除</button>';wrap.querySelector('.customRemove').onclick=()=>wrap.remove();$('customSectionsEditor').appendChild(wrap)};$('closeBtn').onclick=closeEditor;$('cancelBtn').onclick=closeEditor;
 $('form').addEventListener('submit',e=>{
  e.preventDefault();const obj={};
- ['id','author','fandom','series','title','url','progress','readingStatus','clip','memo','source','sourceType','sourceId','recap','episodeSummary','questions','charactersText','relationsText','eventsText','favoriteLevel','favoriteParts'].forEach(k=>obj[k]=$(k).value.trim());
+ ['id','author','fandom','series','seriesUrl','title','url','progress','readingStatus','clip','memo','source','sourceType','sourceId','recap','episodeSummary','questions','charactersText','relationsText','eventsText','favoriteLevel','favoriteParts'].forEach(k=>obj[k]=$(k).value.trim());
  obj.sendToBiblio=$('sendToBiblio').value==='true';obj.customSections=readCustomEditor();
  obj.tags=tagArray($('tags').value);obj.url=normalizeUrl(obj.url);const si=sourceInfo(obj.url);
  obj.source=obj.source||si.source;obj.sourceType=obj.sourceType||si.sourceType;obj.sourceId=obj.sourceId||si.sourceId;obj.sourceKey=si.sourceKey;obj.metadataStatus=metadataState(obj);obj.updatedAt=new Date().toISOString();

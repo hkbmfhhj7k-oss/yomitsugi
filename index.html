@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.10.0 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.10.1 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -39,7 +39,8 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .inlineHead{display:flex;align-items:center;gap:8px}.inlineHead h3{flex:1}
 .miniEdit{background:var(--soft)!important;color:var(--accent)!important;padding:5px 8px!important;border-radius:9px;font-size:12px}
 .inlineForm{margin-top:8px}.inlineForm textarea{min-height:90px}
-.itemRow{display:flex;gap:7px;align-items:flex-start}.itemRow .objectCard{flex:1}.itemActions{display:flex;gap:3px;align-items:flex-start}.deleteMini{background:transparent!important;color:#9a4d4d!important;padding:5px 6px!important;font-size:11px}.nestedTitle{font-weight:800}.nestedBody{white-space:pre-wrap;margin-top:4px}.routeSub{margin-top:8px}
+.itemRow{display:flex;gap:7px;align-items:flex-start}.itemRow .objectCard{flex:1}.itemActions{display:flex;gap:3px;align-items:flex-start}.deleteMini{background:transparent!important;color:#9a4d4d!important;padding:5px 6px!important;font-size:11px}.nestedTitle{font-weight:800}.nestedBody{white-space:pre-wrap;margin-top:4px}.routeSub{margin-top:14px}.routeField{margin-top:14px}.routeField:first-child{margin-top:0}.routeField label{display:block;margin-bottom:6px}.routeDependent{margin-top:8px}.routeDependent label{font-size:12px;margin-bottom:5px}
+.personCard{margin:9px 0;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}.personHead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;cursor:pointer}.personName{font-weight:800}.personCount{font-size:10px;color:var(--muted);margin-left:6px}.personBody{display:none;padding:0 12px 10px}.personCard.open .personBody{display:block}.personEntry{padding:8px 0;border-top:1px solid var(--line)}.personSlot{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px}.personText{white-space:pre-wrap;font-size:13px;line-height:1.55}.personEntryTools{display:none;gap:5px;margin-top:6px}.personEntry.active .personEntryTools{display:flex}.personEntryToggle{background:transparent!important;color:var(--accent)!important;padding:3px 5px!important;font-size:11px}.personTools{display:flex;gap:5px;align-items:center}.personAdd{margin-top:7px;width:100%;background:var(--soft)!important;color:var(--accent)!important}
 .addRow{margin-top:9px}
 .basicLine{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .clipText{white-space:pre-wrap;user-select:text;-webkit-user-select:text;line-height:1.7}
@@ -50,7 +51,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .quickAdd{margin-top:8px;padding:9px;background:var(--bg);border-radius:12px}.quickAdd textarea,.quickAdd input{background:#fff}.routePreview{max-height:150px;overflow:auto;background:var(--bg);padding:10px;border-radius:12px;white-space:pre-wrap;margin:10px 0}.routeSelect{margin-top:8px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.10.0</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.10.1</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -156,12 +157,14 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 <dialog id="routeDialog">
  <div class="modal">
   <div class="row"><div class="title grow">この文章を使う</div><button type="button" class="ghost" id="routeClose">✕</button></div>
-  <div id="routePreview" class="routePreview"></div>
+  <div id="routePreview" class="routePreview"></div><textarea id="routeDirectText" class="hidden" placeholder="内容を入力"></textarea>
   <label>追加先</label><select id="routeTarget" class="routeSelect"></select>
   <div id="routeNested" class="routeSub hidden">
-   <label id="routeEntityLabel">どこに追加する？</label><select id="routeEntity"></select>
-   <input id="routeEntityNew" class="hidden" placeholder="新しい項目名">
-   <label>その中のどこ？</label><select id="routeSlot"></select>
+   <div class="routeField">
+    <label id="routeEntityLabel">どこに追加する？</label><select id="routeEntity"></select>
+    <div id="routeEntityNewWrap" class="routeDependent hidden"><label id="routeEntityNewLabel">名前</label><input id="routeEntityNew" placeholder="新しい項目名"></div>
+   </div>
+   <div class="routeField"><label>その中のどこ？</label><select id="routeSlot"></select></div>
   </div>
   <div class="tiny" style="margin-top:7px">細かく分けない時は「大項目へ直接追加」でOK。元の「拾った本文」は残ります。</div>
   <div class="actions"><button type="button" id="routeConfirm">追加する</button><button type="button" class="secondary" id="routeCancel">キャンセル</button></div>
@@ -344,6 +347,39 @@ window.deleteListItem=(id,field,index)=>{
  if(!confirm(`「${label}」を削除しますか？\n拾った本文は削除されません。`))return;
  lines.splice(index,1);b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('項目を削除したよ');
 };
+function groupedPeople(raw){
+ const lines=splitLines(raw),groups=[],plain=[];
+ lines.forEach((x,index)=>{const p=parseStructuredItem(x);if(!p?.name){plain.push({raw:x,index});return}
+  let g=groups.find(z=>z.name===p.name);if(!g){g={name:p.name,items:[]};groups.push(g)}
+  g.items.push({raw:x,index,slot:p.slot,body:p.body});
+ });
+ return {groups,plain};
+}
+function personSection(id,field,title){
+ const b=books.find(x=>x.id===id),data=groupedPeople(b?.[field]);
+ const groups=data.groups.map((g,gi)=>`<div class="personCard" id="person_${field}_${gi}">
+  <div class="personHead" onclick="togglePersonCard('${field}',${gi})"><div><span class="personName">${esc(g.name)}</span><span class="personCount">${g.items.length}件</span></div><span>⌄</span></div>
+  <div class="personBody">${g.items.map((it,ii)=>`<div class="personEntry" id="personEntry_${field}_${gi}_${ii}">
+    <div class="personSlot">${esc(it.slot||'メモ')}</div><div class="personText">${esc(it.body||'')}</div>
+    <button type="button" class="personEntryToggle" onclick="togglePersonEntry(event,'${field}',${gi},${ii})">操作</button>
+    <div class="personEntryTools"><button type="button" class="miniEdit" onclick="editListItem('${id}','${field}',${it.index})">✎ 編集</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div>
+   </div>`).join('')}
+   <button type="button" class="personAdd" onclick="openPersonAdd('${id}','${field}',${JSON.stringify(g.name).replace(/"/g,'&quot;')})">＋ この人物に追加</button>
+  </div></div>`).join('');
+ const plain=data.plain.length?`<div class="tiny" style="margin-top:9px">未分類</div>`+data.plain.map(it=>`<div class="itemRow"><div class="objectCard">${esc(it.raw)}</div><div class="itemActions"><button type="button" class="miniEdit" onclick="editListItem('${id}','${field}',${it.index})">✎</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div></div>`).join(''):'';
+ return `<section class="detailSection" data-list-section="${field}"><div class="inlineHead"><h3>${esc(title)}</h3><button type="button" class="miniEdit" onclick="openListAdd('${id}','${field}')">＋</button></div>${groups||plain?groups+plain:'<div class="tiny">まだありません</div>'}
+ <div class="quickAdd hidden"><textarea placeholder="${esc(title)}を追加"></textarea><div class="actions"><button type="button" onclick="commitListAdd('${id}','${field}')">追加</button><button type="button" class="secondary" onclick="this.closest('.quickAdd').classList.add('hidden')">閉じる</button></div></div></section>`;
+}
+window.togglePersonCard=(field,gi)=>document.getElementById(`person_${field}_${gi}`)?.classList.toggle('open');
+window.togglePersonEntry=(ev,field,gi,ii)=>{ev.stopPropagation();document.getElementById(`personEntry_${field}_${gi}_${ii}`)?.classList.toggle('active')};
+window.openPersonAdd=(id,field,name)=>{
+ const b=books.find(x=>x.id===id);if(!b)return;
+ pendingRoute={bookId:id,clipId:null,text:'',directPerson:true,directField:field,directName:name};
+ $('routePreview').textContent=`${name} に新しいメモを追加`;
+ $('routeTarget').innerHTML=`<option value="${field}">${field==='charactersText'?'登場人物':field==='relationsText'?'関係':'重要イベント'}</option>`;
+ refreshRouteNested();$('routeEntity').value=name;$('routeEntity').dispatchEvent(new Event('change'));$('routeEntity').disabled=true;
+ $('routeDirectText').classList.remove('hidden');$('routeDirectText').value='';$('routeDialog').showModal();setTimeout(()=>$('routeDirectText').focus(),0);
+};
 function listSection(id,field,title){
  const b=books.find(x=>x.id===id), lines=splitLines(b[field]);
  return `<section class="detailSection" data-list-section="${field}"><div class="inlineHead"><h3>${esc(title)}</h3><button type="button" class="miniEdit" onclick="openListAdd('${id}','${field}')">＋</button></div>
@@ -405,7 +441,7 @@ window.showWork=id=>{
   </div>`).join('')+`</div>`:'<div class="tiny">まだありません</div>'}</section>
   <section class="detailSection" data-section="recap"><div class="inlineHead"><h3>前回まで</h3><button class="miniEdit" onclick="editField('${b.id}','recap','前回まで')">✎</button></div><div>${b.recap?esc(b.recap):'<span class="tiny">まだありません</span>'}</div></section>
   <section class="detailSection" data-section="episodeSummary"><div class="inlineHead"><h3>今回起きたこと</h3><button class="miniEdit" onclick="editField('${b.id}','episodeSummary','今回起きたこと')">✎</button></div><div>${b.episodeSummary?esc(b.episodeSummary):'<span class="tiny">まだありません</span>'}</div></section>
-  ${listSection(b.id,'charactersText','登場人物')}
+  ${personSection(b.id,'charactersText','登場人物')}
   ${listSection(b.id,'relationsText','関係')}
   ${listSection(b.id,'eventsText','重要イベント')}
   ${listSection(b.id,'questions','気になること')}
@@ -447,9 +483,9 @@ function clipTargets(b){
  (b.customSections||[]).forEach((x,i)=>base.push(['custom:'+i,x.title||('自由項目'+(i+1))])); return base;
 }
 const ROUTE_HIERARCHY={
- charactersText:{entityLabel:'どの登場人物？',newLabel:'＋ 新しい人物',slots:['基本メモ','性格・特徴','外見','能力','今回わかったこと','自由メモ']},
- relationsText:{entityLabel:'どの関係？',newLabel:'＋ 新しい関係',slots:['関係メモ','今回の変化','印象的なやりとり','自由メモ']},
- eventsText:{entityLabel:'どのイベント？',newLabel:'＋ 新しいイベント',slots:['起きたこと','関係者','結果・影響','自由メモ']}
+ charactersText:{entityLabel:'どの登場人物？',newLabel:'＋ 新しい人物',nameLabel:'人物名',placeholder:'例：僕、オペラ',slots:['基本メモ','性格・特徴','外見','能力','今回わかったこと','自由メモ']},
+ relationsText:{entityLabel:'どの関係？',newLabel:'＋ 新しい関係',nameLabel:'関係名',placeholder:'例：僕 ⇔ ○○',slots:['関係メモ','今回の変化','印象的なやりとり','自由メモ']},
+ eventsText:{entityLabel:'どのイベント？',newLabel:'＋ 新しいイベント',nameLabel:'イベント名',placeholder:'例：文化祭',slots:['起きたこと','関係者','結果・影響','自由メモ']}
 };
 function routeExistingEntities(b,key){
  const out=[];splitLines(b[key]).forEach(v=>{const p=parseStructuredItem(v);if(p?.name&&!out.includes(p.name))out.push(p.name)});return out;
@@ -459,18 +495,24 @@ function refreshRouteNested(){
  if(!cfg){wrap.classList.add('hidden');return}wrap.classList.remove('hidden');$('routeEntityLabel').textContent=cfg.entityLabel;
  const names=routeExistingEntities(b,key);
  $('routeEntity').innerHTML=`<option value="">大項目へ直接追加</option>`+names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')+`<option value="__new__">${cfg.newLabel}</option>`;
- $('routeSlot').innerHTML=cfg.slots.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');$('routeEntityNew').classList.add('hidden');
+ $('routeSlot').innerHTML=cfg.slots.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');
+ $('routeEntityNewLabel').textContent=cfg.nameLabel||'名前';$('routeEntityNew').placeholder=cfg.placeholder||'新しい項目名';$('routeEntityNewWrap').classList.add('hidden');$('routeEntityNew').value='';
 }
 function openRouteDialog(b,c,text){
- const targets=clipTargets(b);pendingRoute={bookId:b.id,clipId:c.id,text};
+ const targets=clipTargets(b);pendingRoute={bookId:b.id,clipId:c.id,text};$('routeTarget').disabled=false;$('routeEntity').disabled=false;$('routeDirectText').classList.add('hidden');
  $('routePreview').textContent=text;$('routeTarget').innerHTML=targets.map(x=>`<option value="${esc(x[0])}">${esc(x[1])}</option>`).join('');
- $('routeTarget').onchange=refreshRouteNested;$('routeEntity').onchange=()=>{$('routeEntityNew').classList.toggle('hidden',$('routeEntity').value!=='__new__')};
+ $('routeTarget').onchange=refreshRouteNested;$('routeEntity').onchange=()=>{$('routeEntityNewWrap').classList.toggle('hidden',$('routeEntity').value!=='__new__');if($('routeEntity').value==='__new__')setTimeout(()=>$('routeEntityNew').focus(),0)};
  $('routeDialog').showModal();refreshRouteNested();
 }
 function closeRouteDialog(){pendingRoute=null;$('routeDialog').close()}
 $('routeClose').onclick=$('routeCancel').onclick=closeRouteDialog;
 $('routeConfirm').onclick=()=>{
- if(!pendingRoute)return;const b=books.find(x=>x.id===pendingRoute.bookId),c=b&&clipById(b,pendingRoute.clipId);if(!b||!c)return closeRouteDialog();
+ if(!pendingRoute)return;const b=books.find(x=>x.id===pendingRoute.bookId);if(!b)return closeRouteDialog();
+ if(pendingRoute.directPerson){
+  const field=pendingRoute.directField,name=pendingRoute.directName,text=$('routeDirectText').value.trim();if(!text)return showToast('内容を入れてね');
+  const lines=splitLines(b[field]);lines.push(structuredValue(name,$('routeSlot').value,text));b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);closeRouteDialog();showWork(b.id);showToast(name+' に追加したよ');return;
+ }
+ const c=clipById(b,pendingRoute.clipId);if(!c)return closeRouteDialog();
  const targetKey=$('routeTarget').value,t=clipTargets(b).find(x=>x[0]===targetKey);if(!t)return;
  const text=pendingRoute.text;
  if(t[0].startsWith('custom:')){const i=Number(t[0].split(':')[1]),sec=b.customSections?.[i];if(!sec)return;sec.items=Array.isArray(sec.items)?sec.items:[];sec.items.push(text)}
@@ -572,7 +614,7 @@ window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toIS
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.10.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.10.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
  const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';
@@ -582,7 +624,7 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.10.0: one Shortcut, two jobs.
+// v0.10.1: one Shortcut, two jobs.
 // URL-containing input = register/open a work and remember it as the current work.
 // Text-only input = attach the selected text to the remembered current work.
 function rememberCurrentWork(b){

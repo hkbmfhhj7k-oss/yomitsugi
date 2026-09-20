@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.9 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.9.1 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -46,9 +46,11 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .clipTools{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}.clipUsed{font-size:11px;color:var(--muted);margin-top:7px}
 .seriesStats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.seriesStat{background:var(--bg);border-radius:12px;padding:10px;text-align:center}.seriesStat b{display:block;font-size:18px}
 @media(max-width:540px){.seriesStats{grid-template-columns:1fr 1fr}}
+.clipCard{padding:9px 10px}.clipCard .clipText{max-height:8.5em;overflow:auto}.clipActions{display:none;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}.clipCard.active .clipActions{display:block}.clipHint{display:flex;justify-content:space-between;gap:8px;align-items:center}.clipToggle{background:transparent!important;color:var(--accent)!important;padding:4px 6px!important;font-size:11px}
+.quickAdd{margin-top:8px;padding:9px;background:var(--bg);border-radius:12px}.quickAdd textarea,.quickAdd input{background:#fff}.routePreview{max-height:150px;overflow:auto;background:var(--bg);padding:10px;border-radius:12px;white-space:pre-wrap;margin:10px 0}.routeSelect{margin-top:8px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.9</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.9.1</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -151,6 +153,15 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
   </div>
  </div>
 </dialog>
+<dialog id="routeDialog">
+ <div class="modal">
+  <div class="row"><div class="title grow">この文章を使う</div><button type="button" class="ghost" id="routeClose">✕</button></div>
+  <div id="routePreview" class="routePreview"></div>
+  <label>追加先</label><select id="routeTarget" class="routeSelect"></select>
+  <div class="tiny" style="margin-top:7px">元の「拾った本文」は残したまま、選んだ項目へコピーします。</div>
+  <div class="actions"><button type="button" id="routeConfirm">追加する</button><button type="button" class="secondary" id="routeCancel">キャンセル</button></div>
+ </div>
+</dialog>
 <div id="toast" class="toast hidden"></div>
 
 <script>
@@ -218,7 +229,14 @@ function searchable(b){return [b.title,b.author,b.series,b.fandom,...tagArray(b.
 function showToast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');clearTimeout(showToast.t);showToast.t=setTimeout(()=>$('toast').classList.add('hidden'),2200)}
 function renderShelf(){
  $('bookCount').textContent=`${books.length}件`;
- $('shelf').innerHTML=books.map((_,i)=>`<span class="spine" title="${i+1}冊目" style="height:${28+(i*17%37)}px;transform:rotate(${i%5===0?-2:i%7===0?2:0}deg);flex:0 0 13px"></span>`).join('');
+ $('shelf').innerHTML=books.map((b,i)=>{
+  // Stable pseudo-random shape per work: varied shelf, no reshuffle on every render.
+  const seed=String(b.id||b.sourceKey||i).split('').reduce((h,ch)=>Math.imul(h^ch.charCodeAt(0),16777619)>>>0,2166136261);
+  const height=30+(seed%35);
+  const width=10+((seed>>>7)%8);
+  const tilt=((seed>>>13)%9===0)?-2:((seed>>>17)%11===0?2:0);
+  return `<span class="spine" title="${i+1}冊目" style="height:${height}px;width:${width}px;transform:rotate(${tilt}deg);flex:0 0 ${width}px"></span>`;
+ }).join('');
 }
 function compactCard(b){
  return `<article class="book compact">
@@ -281,49 +299,67 @@ function editField(id,field,label,multiline=true){
 }
 window.saveInline=(id,field)=>saveWorkField(id,field,$(`inline_${field}`).value.trim());
 
-function addListItem(id,field,label){
- const b=books.find(x=>x.id===id);if(!b)return;
- const value=prompt(`${label}を追加`);
- if(value===null||!value.trim())return;
- const lines=splitLines(b[field]);lines.push(value.trim());b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+function openListAdd(id,field,label){
+ const box=document.querySelector(`[data-list-section="${field}"] .quickAdd`);
+ if(!box)return;
+ document.querySelectorAll('.quickAdd').forEach(x=>{if(x!==box)x.classList.add('hidden')});
+ box.classList.toggle('hidden');
+ if(!box.classList.contains('hidden'))setTimeout(()=>box.querySelector('textarea,input')?.focus(),0);
+}
+function commitListAdd(id,field){
+ const b=books.find(x=>x.id===id), input=document.querySelector(`[data-list-section="${field}"] .quickAdd textarea`);
+ if(!b||!input||!input.value.trim())return;
+ const lines=splitLines(b[field]);lines.push(input.value.trim());b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();
+ persist(false);showWork(id);showToast('追加したよ');
 }
 function editListItem(id,field,index,label){
  const b=books.find(x=>x.id===id);if(!b)return;
- const lines=splitLines(b[field]);const value=prompt(`${label}を編集`,lines[index]||'');
- if(value===null)return;
- if(value.trim())lines[index]=value.trim();else lines.splice(index,1);
- b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+ const lines=splitLines(b[field]), section=document.querySelector(`[data-list-section="${field}"]`);
+ if(!section)return;
+ const rows=section.querySelectorAll('.itemRow'), row=rows[index];if(!row)return;
+ row.innerHTML=`<textarea class="grow" style="min-height:72px">${esc(lines[index]||'')}</textarea><div class="actions"><button onclick="commitListEdit('${id}','${field}',${index},this)">保存</button><button class="secondary" onclick="showWork('${id}')">取消</button></div>`;
+ row.querySelector('textarea')?.focus();
 }
+window.commitListEdit=(id,field,index,btn)=>{
+ const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),v=btn.closest('.itemRow').querySelector('textarea').value.trim();
+ if(v)lines[index]=v;else lines.splice(index,1);b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('保存したよ');
+};
 function listSection(id,field,title){
  const b=books.find(x=>x.id===id), lines=splitLines(b[field]);
- return `<section class="detailSection"><div class="inlineHead"><h3>${esc(title)}</h3><button class="miniEdit" onclick="addListItem('${id}','${field}',${JSON.stringify(title)})">＋</button></div>
- ${lines.length?lines.map((x,i)=>`<div class="itemRow"><div class="objectCard">${esc(x)}</div><button class="miniEdit" onclick="editListItem('${id}','${field}',${i},${JSON.stringify(title)})">✎</button></div>`).join(''):'<div class="tiny">まだありません</div>'}</section>`;
+ return `<section class="detailSection" data-list-section="${field}"><div class="inlineHead"><h3>${esc(title)}</h3><button class="miniEdit" onclick="openListAdd('${id}','${field}',${JSON.stringify(title)})">＋</button></div>
+ ${lines.length?lines.map((x,i)=>`<div class="itemRow"><div class="objectCard">${esc(x)}</div><button class="miniEdit" onclick="editListItem('${id}','${field}',${i},${JSON.stringify(title)})">✎</button></div>`).join(''):'<div class="tiny">まだありません</div>'}
+ <div class="quickAdd hidden"><textarea placeholder="${esc(title)}を追加"></textarea><div class="actions"><button onclick="commitListAdd('${id}','${field}')">追加</button><button class="secondary" onclick="this.closest('.quickAdd').classList.add('hidden')">閉じる</button></div></div></section>`;
 }
 function addCustomSectionInline(id){
  const b=books.find(x=>x.id===id);if(!b)return;
- const title=prompt('セクション名（例：好きな台詞、特殊設定）');if(!title||!title.trim())return;
- b.customSections=b.customSections||[];b.customSections.push({title:title.trim(),items:[]});b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+ b.customSections=b.customSections||[];b.customSections.push({title:'新しい項目',items:[]});b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('自由項目を追加したよ');
+}
+function openCustomAdd(id,si){
+ const box=document.querySelector(`[data-custom-section="${si}"] .quickAdd`);if(!box)return;box.classList.toggle('hidden');if(!box.classList.contains('hidden'))setTimeout(()=>box.querySelector('textarea')?.focus(),0);
 }
 function addCustomItem(id,si){
- const b=books.find(x=>x.id===id);const s=b?.customSections?.[si];if(!s)return;
- const v=prompt(`${s.title}に追加`);if(!v||!v.trim())return;s.items=s.items||[];s.items.push(v.trim());b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+ const b=books.find(x=>x.id===id),s=b?.customSections?.[si],box=document.querySelector(`[data-custom-section="${si}"] .quickAdd textarea`);if(!s||!box||!box.value.trim())return;
+ s.items=s.items||[];s.items.push(box.value.trim());b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('追加したよ');
 }
 function editCustomItem(id,si,ii){
  const b=books.find(x=>x.id===id),s=b?.customSections?.[si];if(!s)return;
- const v=prompt(`${s.title}を編集`,s.items[ii]||'');if(v===null)return;
- if(v.trim())s.items[ii]=v.trim();else s.items.splice(ii,1);b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+ const section=document.querySelector(`[data-custom-section="${si}"]`),row=section?.querySelectorAll('.itemRow')[ii];if(!row)return;
+ row.innerHTML=`<textarea class="grow" style="min-height:72px">${esc(s.items[ii]||'')}</textarea><div class="actions"><button onclick="commitCustomEdit('${id}',${si},${ii},this)">保存</button><button class="secondary" onclick="showWork('${id}')">取消</button></div>`;row.querySelector('textarea')?.focus();
 }
+window.commitCustomEdit=(id,si,ii,btn)=>{const b=books.find(x=>x.id===id),sec=b?.customSections?.[si];if(!sec)return;const v=btn.closest('.itemRow').querySelector('textarea').value.trim();if(v)sec.items[ii]=v;else sec.items.splice(ii,1);b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('保存したよ')};
 function renameCustomSection(id,si){
- const b=books.find(x=>x.id===id),s=b?.customSections?.[si];if(!s)return;
- const v=prompt('セクション名',s.title);if(v===null)return;
- if(!v.trim()){if(confirm('このセクションを削除しますか？'))b.customSections.splice(si,1)}else s.title=v.trim();
- b.updatedAt=new Date().toISOString();persist(false);showWork(id);
+ const b=books.find(x=>x.id===id),sec=b?.customSections?.[si],section=document.querySelector(`[data-custom-section="${si}"]`);if(!sec||!section)return;
+ const head=section.querySelector('.inlineHead');head.innerHTML=`<input class="grow" value="${esc(sec.title||'')}" placeholder="項目名"><button class="miniEdit" onclick="commitCustomRename('${id}',${si},this)">保存</button><button class="miniEdit dangerBtn" onclick="deleteCustomSection('${id}',${si})">削除</button>`;
+ head.querySelector('input')?.focus();
 }
+window.commitCustomRename=(id,si,btn)=>{const b=books.find(x=>x.id===id),sec=b?.customSections?.[si];if(!sec)return;const v=btn.parentElement.querySelector('input').value.trim();if(v)sec.title=v;b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('項目名を保存したよ')};
+window.deleteCustomSection=(id,si)=>{const b=books.find(x=>x.id===id);if(!b)return;if(!confirm('この自由項目を削除しますか？'))return;b.customSections.splice(si,1);b.updatedAt=new Date().toISOString();persist(false);showWork(id)};
 window.showWork=id=>{
  const b=books.find(x=>x.id===id);if(!b)return;
- const custom=(b.customSections||[]).map((s,si)=>`<section class="detailSection">
-   <div class="inlineHead"><h3>${esc(s.title||'自由項目')}</h3><button class="miniEdit" onclick="renameCustomSection('${b.id}',${si})">✎</button><button class="miniEdit" onclick="addCustomItem('${b.id}',${si})">＋</button></div>
+ const custom=(b.customSections||[]).map((s,si)=>`<section class="detailSection" data-custom-section="${si}">
+   <div class="inlineHead"><h3>${esc(s.title||'自由項目')}</h3><button class="miniEdit" onclick="renameCustomSection('${b.id}',${si})">✎</button><button class="miniEdit" onclick="openCustomAdd('${b.id}',${si})">＋</button></div>
    ${(s.items||[]).length?(s.items||[]).map((x,ii)=>`<div class="itemRow"><div class="objectCard">${esc(x)}</div><button class="miniEdit" onclick="editCustomItem('${b.id}',${si},${ii})">✎</button></div>`).join(''):'<div class="tiny">まだありません</div>'}
+   <div class="quickAdd hidden"><textarea placeholder="${esc(s.title||'自由項目')}に追加"></textarea><div class="actions"><button onclick="addCustomItem('${b.id}',${si})">追加</button><button class="secondary" onclick="this.closest('.quickAdd').classList.add('hidden')">閉じる</button></div></div>
   </section>`).join('');
  showPage(b.title||'作品詳細',`
   <section class="hero panel">
@@ -340,12 +376,12 @@ window.showWork=id=>{
   </section>
 
   <section class="detailSection"><div class="inlineHead"><h3>拾った本文</h3><span class="tiny">${(b.textClips||[]).length}件</span></div>
-  <div class="tiny">原文はそのまま残せます。文章を選択してから「選択部分を使う」を押すと、好きな項目へ枝分かれコピーできます。</div>
-  ${(b.textClips||[]).length?(b.textClips||[]).slice().reverse().map(c=>`<div class="objectCard">
-    <div class="clipText" data-clip-id="${esc(c.id||'')}">${esc(c.text)}</div>
-    <div class="tiny" style="margin-top:6px">${new Date(c.capturedAt).toLocaleString('ja-JP')}</div>
+  <div class="tiny">普段は本文だけ。使いたい文章を選択するか「操作」を押すとメニューが開きます。</div>
+  ${(b.textClips||[]).length?(b.textClips||[]).slice().reverse().map(c=>`<div class="objectCard clipCard" id="clip_${esc(c.id||'')}">
+    <div class="clipText" data-clip-id="${esc(c.id||'')}" onpointerup="clipSelectionChanged('${b.id}','${c.id||''}',this)" ontouchend="setTimeout(()=>clipSelectionChanged('${b.id}','${c.id||''}',this),80)">${esc(c.text)}</div>
+    <div class="clipHint"><div class="tiny">${new Date(c.capturedAt).toLocaleString('ja-JP')}</div><button class="clipToggle" onclick="toggleClipActions('${c.id||''}')">操作</button></div>
     ${(c.usedTo||[]).length?`<div class="clipUsed">使用先：${(c.usedTo||[]).map(x=>esc(x)).join('・')}</div>`:''}
-    <div class="clipTools"><button class="miniEdit" onpointerdown="captureClipSelection()" onclick="useClipText('${b.id}','${c.id||''}')">選択部分を使う</button><button class="miniEdit" onclick="useWholeClip('${b.id}','${c.id||''}')">全文を使う</button><button class="miniEdit dangerBtn" onclick="deleteTextClip('${b.id}','${c.id||''}')">削除</button></div>
+    <div class="clipActions"><div class="clipTools"><button class="miniEdit" onclick="useClipText('${b.id}','${c.id||''}')">選択部分を使う</button><button class="miniEdit" onclick="useWholeClip('${b.id}','${c.id||''}')">全文を使う</button><button class="miniEdit dangerBtn" onclick="deleteTextClip('${b.id}','${c.id||''}')">削除</button></div></div>
   </div>`).join(''):'<div class="tiny">まだありません</div>'}</section>
   <section class="detailSection" data-section="recap"><div class="inlineHead"><h3>前回まで</h3><button class="miniEdit" onclick="editField('${b.id}','recap','前回まで')">✎</button></div><div>${b.recap?esc(b.recap):'<span class="tiny">まだありません</span>'}</div></section>
   <section class="detailSection" data-section="episodeSummary"><div class="inlineHead"><h3>今回起きたこと</h3><button class="miniEdit" onclick="editField('${b.id}','episodeSummary','今回起きたこと')">✎</button></div><div>${b.episodeSummary?esc(b.episodeSummary):'<span class="tiny">まだありません</span>'}</div></section>
@@ -373,24 +409,36 @@ window.showSeriesByName=name=>{
  ${recaps.length?`<section class="detailSection"><h3>シリーズを思い出す</h3>${recaps.map(x=>`<div class="objectCard"><b>${esc(x.title||'タイトル未取得')}</b>${x.recap?`<div style="margin-top:5px">${esc(x.recap)}</div>`:''}${x.episodeSummary?`<div class="tiny" style="margin-top:5px">今回：${esc(x.episodeSummary)}</div>`:''}${x.eventsText?`<div class="tiny" style="margin-top:5px">重要：${esc(x.eventsText)}</div>`:''}</div>`).join('')}</section>`:''}
  <section class="detailSection"><h3>作品一覧</h3><div class="tiny">登録された作品をまとめて確認できます。</div></section>${items.map(compactCard).join('')}`);
 }
-let savedClipSelection='';
-window.captureClipSelection=()=>{savedClipSelection=String(window.getSelection()?.toString()||'').trim()};
+let savedClipSelection='', pendingRoute=null;
+window.toggleClipActions=clipId=>{const el=document.getElementById('clip_'+clipId);if(el)el.classList.toggle('active')};
+window.clipSelectionChanged=(id,clipId,el)=>{
+ const sel=window.getSelection();const text=String(sel?.toString()||'').trim();if(!text)return;
+ try{const range=sel.getRangeAt(0);if(!el.contains(range.commonAncestorContainer))return}catch{return}
+ savedClipSelection=text;document.getElementById('clip_'+clipId)?.classList.add('active');
+};
 function clipById(b,clipId){return (b.textClips||[]).find(c=>String(c.id||'')===String(clipId))}
 function clipTargets(b){
  const base=[['recap','前回まで'],['episodeSummary','今回起きたこと'],['charactersText','登場人物'],['relationsText','関係'],['eventsText','重要イベント'],['questions','気になること'],['memo','メモ・感想'],['favoriteParts','お気に入り箇所']];
  (b.customSections||[]).forEach((x,i)=>base.push(['custom:'+i,x.title||('自由項目'+(i+1))])); return base;
 }
-function sendClipToTarget(b,c,text){
- const targets=clipTargets(b), menu=targets.map((x,i)=>`${i+1}. ${x[1]}`).join('\n');
- const ans=prompt('追加先を番号で選んでね\n\n'+menu,'1'); if(ans===null)return;
- const t=targets[Number(ans)-1]; if(!t){showToast('その番号の項目はありません');return}
+function openRouteDialog(b,c,text){
+ const targets=clipTargets(b);pendingRoute={bookId:b.id,clipId:c.id,text};
+ $('routePreview').textContent=text;$('routeTarget').innerHTML=targets.map(x=>`<option value="${esc(x[0])}">${esc(x[1])}</option>`).join('');
+ $('routeDialog').showModal();
+}
+function closeRouteDialog(){pendingRoute=null;$('routeDialog').close()}
+$('routeClose').onclick=$('routeCancel').onclick=closeRouteDialog;
+$('routeConfirm').onclick=()=>{
+ if(!pendingRoute)return;const b=books.find(x=>x.id===pendingRoute.bookId),c=b&&clipById(b,pendingRoute.clipId);if(!b||!c)return closeRouteDialog();
+ const targetKey=$('routeTarget').value,t=clipTargets(b).find(x=>x[0]===targetKey);if(!t)return;
+ const text=pendingRoute.text;
  if(t[0].startsWith('custom:')){const i=Number(t[0].split(':')[1]),sec=b.customSections?.[i];if(!sec)return;sec.items=Array.isArray(sec.items)?sec.items:[];sec.items.push(text)}
  else b[t[0]]=[b[t[0]],text].filter(Boolean).join('\n');
  c.usedTo=Array.isArray(c.usedTo)?c.usedTo:[];if(!c.usedTo.includes(t[1]))c.usedTo.push(t[1]);
- b.updatedAt=new Date().toISOString();persist(false);showWork(b.id);showToast('「'+t[1]+'」に追加したよ');
-}
-window.useClipText=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(!b||!c)return;let text=savedClipSelection||String(window.getSelection()?.toString()||'').trim();savedClipSelection='';if(!text){showToast('使いたい文章を選択してから押してね');return}sendClipToTarget(b,c,text)};
-window.useWholeClip=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(b&&c)sendClipToTarget(b,c,c.text)};
+ b.updatedAt=new Date().toISOString();persist(false);closeRouteDialog();showWork(b.id);showToast('「'+t[1]+'」に追加したよ');
+};
+window.useClipText=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(!b||!c)return;const text=savedClipSelection;savedClipSelection='';if(!text){showToast('先に使いたい文章を選択してね');return}openRouteDialog(b,c,text)};
+window.useWholeClip=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(b&&c)openRouteDialog(b,c,c.text)};
 window.deleteTextClip=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(!b||!c)return;if(!confirm('この「拾った本文」を削除しますか？\n各項目へコピー済みの文章は残ります。'))return;b.textClips=(b.textClips||[]).filter(x=>x!==c);b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('拾った本文を削除したよ')};
 
 function duplicateCard(b){
@@ -478,7 +526,7 @@ window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toIS
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:6,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v3.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:7,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.9.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
  const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';
@@ -488,7 +536,7 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.9: one Shortcut, two jobs.
+// v0.9.1: one Shortcut, two jobs.
 // URL-containing input = register/open a work and remember it as the current work.
 // Text-only input = attach the selected text to the remembered current work.
 function rememberCurrentWork(b){
@@ -517,6 +565,7 @@ function saveSharedText(raw){
     b.textClips.push({id:crypto.randomUUID(),text,capturedAt:now,method:'shortcut-selected-text',usedTo:[]});
   }
   b.updatedAt=now;
+  rememberCurrentWork(b);
   b.captures=b.captures||[];
   b.captures.push({capturedAt:now,method:'selected-text'});
   persist(false);

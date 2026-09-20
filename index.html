@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.11.4 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.11.5 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -53,9 +53,10 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .libraryTabs{display:flex;gap:6px;margin:0 0 10px}.libraryTabs button{flex:1}.libraryTabs button.active{background:var(--accent)!important;color:#fff!important}
 .seriesGrid{display:grid;gap:9px}.seriesIndexCard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:left;width:100%;color:inherit}.seriesIndexCard .seriesName{font-weight:800;font-size:14px}.seriesIndexMeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .groupCard{margin:9px 0;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}.groupHead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;cursor:pointer}.groupName{font-weight:800}.groupCount{font-size:10px;color:var(--muted);margin-left:6px}.groupBody{display:none;padding:0 12px 10px}.groupCard.open .groupBody{display:block}.groupEntry{padding:8px 0;border-top:1px solid var(--line)}.groupSlot{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px}.groupText{white-space:pre-wrap;font-size:13px;line-height:1.55}.groupEntryTools{display:none;gap:5px;margin-top:6px}.groupEntry.active .groupEntryTools{display:flex}.groupEntryToggle{background:transparent!important;color:var(--accent)!important;padding:3px 5px!important;font-size:11px}.groupAdd{margin-top:7px;width:100%;background:var(--soft)!important;color:var(--accent)!important}.groupEditBox{margin-top:6px}.groupEditBox textarea{min-height:84px}
+.groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.11.4</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.11.5</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 
 <section class="panel">
@@ -380,7 +381,8 @@ function editListItem(id,field,index){
 }
 window.commitListEdit=(id,field,index,btn)=>{
  const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),v=btn.closest('.itemRow').querySelector('textarea').value.trim();
- if(v)lines[index]=v;else lines.splice(index,1);b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('保存したよ');
+ if(v)lines[index]=v;else if(p)removeStructuredUsage(b,field,p);
+ lines.splice(index,1);b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('保存したよ');
 };
 function parseStructuredItem(raw){
  const text=String(raw||'');if(!text.startsWith('§'))return null;
@@ -391,6 +393,21 @@ function renderStructuredItem(raw){
  return `<div class="nestedTitle">${esc(p.name)}${p.slot?` <span class="tiny">› ${esc(p.slot)}</span>`:''}</div>${p.body?`<div class="nestedBody">${esc(p.body)}</div>`:''}`;
 }
 function structuredValue(name,slot,body){name=String(name||'').trim();slot=String(slot||'').trim();body=String(body||'').trim().replace(/\r?\n/g,'↵');return name?`§${name}§${slot}§${body}`:body}
+function usageLabel(u){
+ const top=u.field==='charactersText'?'登場人物':u.field==='relationsText'?'関係':u.field==='eventsText'?'重要イベント':u.label||'';
+ return [top,u.name,u.slot].filter(Boolean).join(' › ');
+}
+function syncClipUsageLabels(c){
+ if(Array.isArray(c.usages)){c.usedTo=[...new Set(c.usages.map(usageLabel).filter(Boolean))]}
+}
+function addClipUsage(c,usage){
+ c.usages=Array.isArray(c.usages)?c.usages:[];
+ const same=c.usages.some(u=>u.field===usage.field&&u.name===usage.name&&u.slot===usage.slot&&u.text===usage.text);
+ if(!same)c.usages.push(usage);syncClipUsageLabels(c);
+}
+function removeStructuredUsage(b,field,p){
+ (b.textClips||[]).forEach(c=>{if(!Array.isArray(c.usages))return;c.usages=c.usages.filter(u=>!(u.field===field&&u.name===p.name&&u.slot===(p.slot||'')&&u.text===p.body));syncClipUsageLabels(c)});
+}
 window.deleteListItem=(id,field,index)=>{
  const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),raw=lines[index];if(raw===undefined)return;
  const p=parseStructuredItem(raw),label=p?.name||String(raw).slice(0,40)||'この項目';
@@ -400,24 +417,25 @@ window.deleteListItem=(id,field,index)=>{
 function groupedNotes(raw,field){
  const lines=splitLines(raw),groups=[],plain=[];
  lines.forEach((x,index)=>{const p=parseStructuredItem(x);if(!p?.name){plain.push({raw:x,index});return}
-  let g=groups.find(z=>z.name===p.name);if(!g){g={name:p.name,items:[]};groups.push(g)}
-  g.items.push({raw:x,index,slot:p.slot,body:p.body});
+  let g=groups.find(z=>z.name===p.name);if(!g){g={name:p.name,slots:[]};groups.push(g)}
+  const slot=p.slot||'メモ';let sg=g.slots.find(z=>z.slot===slot);if(!sg){sg={slot,items:[]};g.slots.push(sg)}
+  sg.items.push({raw:x,index,slot,body:p.body});
  });
  const order=ROUTE_HIERARCHY[field]?.slots||[];
- groups.forEach(g=>g.items.sort((a,b)=>{const ai=order.indexOf(a.slot),bi=order.indexOf(b.slot);return (ai<0?999:ai)-(bi<0?999:bi)||a.index-b.index}));
+ groups.forEach(g=>g.slots.sort((a,b)=>{const ai=order.indexOf(a.slot),bi=order.indexOf(b.slot);return (ai<0?999:ai)-(bi<0?999:bi)}));
  return {groups,plain};
 }
 function groupedSection(id,field,title,noun){
  const b=books.find(x=>x.id===id),data=groupedNotes(b?.[field],field);
- const groups=data.groups.map((g,gi)=>`<div class="groupCard" id="group_${field}_${gi}">
-  <div class="groupHead" onclick="toggleGroupCard('${field}',${gi})"><div><span class="groupName">${esc(g.name)}</span><span class="groupCount">${g.items.length}件</span></div><span>⌄</span></div>
-  <div class="groupBody">${g.items.map((it,ii)=>`<div class="groupEntry" id="groupEntry_${field}_${gi}_${ii}">
-    <div class="groupSlot">${esc(it.slot||'メモ')}</div><div class="groupText">${esc(it.body||'')}</div>
-    <button type="button" class="groupEntryToggle" onclick="toggleGroupEntry(event,'${field}',${gi},${ii})">操作</button>
-    <div class="groupEntryTools"><button type="button" class="miniEdit" onclick="editGroupedItem('${id}','${field}',${it.index},'${field}_${gi}_${ii}')">✎ 編集</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div>
-   </div>`).join('')}
+ const groups=data.groups.map((g,gi)=>{const count=g.slots.reduce((n,sg)=>n+sg.items.length,0);return `<div class="groupCard" id="group_${field}_${gi}">
+  <div class="groupHead" onclick="toggleGroupCard('${field}',${gi})"><div><span class="groupName">${esc(g.name)}</span><span class="groupCount">${count}件</span></div><span>⌄</span></div>
+  <div class="groupBody">${g.slots.map((sg,si)=>`<div class="groupSlotBlock"><div class="groupSlot">${esc(sg.slot)}</div>${sg.items.map((it,ii)=>`<div class="groupEntry" id="groupEntry_${field}_${gi}_${si}_${ii}">
+    <div class="groupText">${esc(it.body||'')}</div>
+    <button type="button" class="groupEntryToggle" onclick="toggleGroupEntry(event,'${field}',${gi},'${si}_${ii}')">操作</button>
+    <div class="groupEntryTools"><button type="button" class="miniEdit" onclick="editGroupedItem('${id}','${field}',${it.index},'${field}_${gi}_${si}_${ii}')">✎ 編集</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div>
+   </div>`).join('')}</div>`).join('')}
    <button type="button" class="groupAdd" onclick="openGroupAdd('${id}','${field}',${JSON.stringify(g.name).replace(/"/g,'&quot;')})">＋ この${esc(noun)}に追加</button>
-  </div></div>`).join('');
+  </div></div>`}).join('');
  const plain=data.plain.length?`<div class="tiny" style="margin-top:9px">未分類</div>`+data.plain.map(it=>`<div class="itemRow"><div class="objectCard">${esc(it.raw)}</div><div class="itemActions"><button type="button" class="miniEdit" onclick="editListItem('${id}','${field}',${it.index})">✎</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div></div>`).join(''):'';
  return `<section class="detailSection" data-list-section="${field}"><div class="inlineHead"><h3>${esc(title)}</h3><button type="button" class="miniEdit" onclick="openStructuredAdd('${id}','${field}')">＋</button></div>${groups||plain?groups+plain:'<div class="tiny">まだありません</div>'}</section>`;
 }
@@ -619,10 +637,10 @@ $('routeConfirm').onclick=()=>{
  else if(ROUTE_HIERARCHY[t[0]]){
   const lines=splitLines(b[t[0]]),choice=$('routeEntity').value;
   if(!choice)lines.push(text);
-  else{const name=choice==='__new__'&&t[0]==='relationsText'?relationPairName():choice==='__new__'?$('routeEntityNew').value.trim():choice;if(!name){showToast(t[0]==='relationsText'?'人物A・Bを選ぶか自由入力してね':'追加先の名前を入れてね');return}upsertStructuredNote(b,t[0],name,$('routeSlot').value,text)}
-  if(!choice)b[t[0]]=lines.join('\n');
- } else b[t[0]]=[b[t[0]],text].filter(Boolean).join('\n');
- c.usedTo=Array.isArray(c.usedTo)?c.usedTo:[];if(!c.usedTo.includes(t[1]))c.usedTo.push(t[1]);
+  else{const name=choice==='__new__'&&t[0]==='relationsText'?relationPairName():choice==='__new__'?$('routeEntityNew').value.trim():choice;if(!name){showToast(t[0]==='relationsText'?'人物A・Bを選ぶか自由入力してね':'追加先の名前を入れてね');return}const slot=$('routeSlot').value;upsertStructuredNote(b,t[0],name,slot,text);addClipUsage(c,{field:t[0],name,slot,text,label:t[1]})}
+  if(!choice){b[t[0]]=lines.join('\n');addClipUsage(c,{field:t[0],name:'',slot:'',text,label:t[1]})}
+ } else {b[t[0]]=[b[t[0]],text].filter(Boolean).join('\n');addClipUsage(c,{field:t[0],name:'',slot:'',text,label:t[1]})}
+ if(t[0].startsWith('custom:'))addClipUsage(c,{field:t[0],name:'',slot:'',text,label:t[1]});
  b.updatedAt=new Date().toISOString();persist(false);closeRouteDialog();showWork(b.id);showToast('「'+t[1]+'」に追加したよ');
 };
 window.useClipText=(id,clipId)=>{const b=books.find(x=>x.id===id),c=b&&clipById(b,clipId);if(!b||!c)return;const text=savedClipSelection;savedClipSelection='';if(!text){showToast('先に使いたい文章を選択してね');return}openRouteDialog(b,c,text)};
@@ -717,7 +735,7 @@ showWork=function(id){_showWorkBase(id);restoreDetailScroll()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.4.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.5.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
  const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';
@@ -727,7 +745,7 @@ function acceptQuery(){
 }
 migrate();render();acceptQuery();
 
-// v0.11.4: fixed slot order, same-slot expansion, flexible relation pair input.
+// v0.11.5: fixed slot order, same-slot expansion, flexible relation pair input.
 // URL-containing input = register/open a work and remember it as the current work.
 // Text-only input = attach the selected text to the remembered current work.
 function rememberCurrentWork(b){

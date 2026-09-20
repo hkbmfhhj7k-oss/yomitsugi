@@ -197,6 +197,7 @@ let books=[]; try{books=JSON.parse(localStorage.getItem(KEY)||'[]')}catch{books=
 let activeFilter='all';
 const $=id=>document.getElementById(id);
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const jsArg=s=>JSON.stringify(String(s||'')).replace(/&/g,'&amp;').replace(/'/g,'&#39;');
 const tagArray=v=>Array.isArray(v)?v:String(v||'').split(/[,、#\n]+/).map(x=>x.trim()).filter(Boolean);
 function normalizeUrl(raw){
  try{
@@ -277,7 +278,7 @@ function compactCard(b){
    <span class="pill">${esc(b.readingStatus)}</span>
   </div>
   <div class="meta">${esc(b.author||'作者未取得')}${b.fandom?' ・ '+esc(b.fandom):''}</div>
-  ${b.series?`<button class="linkish tiny" onclick="showSeriesByName(${JSON.stringify(b.series)})">${esc(b.series)} ＞</button>`:''}
+  ${b.series?`<button class="linkish tiny" onclick='showSeriesByName(${jsArg(b.series)})'>${esc(b.series)} ＞</button>`:''}
   <div>${tagArray(b.tags).slice(0,4).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}${tagArray(b.tags).length>4?`<span class="tiny"> +${tagArray(b.tags).length-4}</span>`:''}</div>
   <div class="tiny" style="margin-top:6px">${b.progress?'前回：'+esc(b.progress)+' ・ ':''}${b.lastRead?'最終読書 '+daysAgo(b.lastRead):'保存 '+daysAgo(b.capturedAt)}</div>
   <div class="actions">
@@ -315,7 +316,7 @@ function renderSeriesIndex(){
   const latest=[...items].sort((a,b)=>(b.lastRead||b.updatedAt||b.capturedAt||'').localeCompare(a.lastRead||a.updatedAt||a.capturedAt||''))[0];
   const read=items.filter(x=>x.readingStatus==='読了').length;
   const author=items.find(x=>x.author)?.author||'';
-  return `<button type="button" class="seriesIndexCard" onclick="showSeriesByName(${JSON.stringify(name).replace(/"/g,'&quot;')})"><div class="seriesName">${esc(name)}</div>${author?`<div class="tiny">${esc(author)}</div>`:''}<div class="seriesIndexMeta"><span class="pill">${items.length}話</span>${read?`<span class="tiny">読了 ${read}</span>`:''}${latest?`<span class="tiny">最終 ${daysAgo(latest.lastRead||latest.updatedAt||latest.capturedAt)}</span>`:''}</div></button>`;
+  return `<button type="button" class="seriesIndexCard" onclick='showSeriesByName(${jsArg(name)})'><div class="seriesName">${esc(name)}</div>${author?`<div class="tiny">${esc(author)}</div>`:''}<div class="seriesIndexMeta"><span class="pill">${items.length}話</span>${read?`<span class="tiny">読了 ${read}</span>`:''}${latest?`<span class="tiny">最終 ${daysAgo(latest.lastRead||latest.updatedAt||latest.capturedAt)}</span>`:''}</div></button>`;
  }).join('')}</div>`:'<div class="empty">シリーズ登録された作品はまだありません。</div>';
 }
 function setHomeMode(mode){
@@ -519,7 +520,7 @@ window.showWork=id=>{
  showPage(b.title||'作品詳細',`
   <section class="hero panel">
    <div class="basicLine">
-    <div class="tiny grow">${b.fandom?esc(b.fandom)+' / ':''}${b.series?`<button class="linkish" onclick="showSeriesByName(${JSON.stringify(b.series)})">シリーズ：${esc(b.series)} ＞</button>`:''}${b.seriesUrl?` <button class="linkish" onclick="window.open(${JSON.stringify(b.seriesUrl)},'_blank')">元シリーズ ↗</button>`:''}</div>
+    <div class="tiny grow">${b.fandom?esc(b.fandom)+' / ':''}${b.series?`<button class="linkish" onclick='showSeriesByName(${jsArg(b.series)})'>シリーズ：${esc(b.series)} ＞</button>`:''}${b.seriesUrl?` <button class="linkish" onclick='window.open(${jsArg(b.seriesUrl)},"_blank")'>元シリーズ ↗</button>`:''}</div>
     <button class="miniEdit" onclick="quickField('${b.id}','fandom','原作')">原作 ✎</button>
     <button class="miniEdit" onclick="quickField('${b.id}','series','シリーズ')">シリーズ ✎</button>
     <button class="miniEdit" onclick="quickField('${b.id}','seriesUrl','シリーズURL')">URL ✎</button>
@@ -558,7 +559,7 @@ window.showSeriesByName=name=>{
  const tags=[...new Set(items.flatMap(x=>tagArray(x.tags)))], clips=items.reduce((n,x)=>n+(x.textClips||[]).length,0), read=items.filter(x=>x.readingStatus==='読了').length;
  const latest=[...items].sort((a,b)=>(b.lastRead||b.updatedAt||'').localeCompare(a.lastRead||a.updatedAt||''))[0];
  const recaps=items.filter(x=>x.recap||x.episodeSummary||x.eventsText);
- showPage(name,`<section class="hero panel"><div class="tiny">SERIES</div><h1>${esc(name)}</h1><div class="author">${esc(author)}${fandom?' ・ '+esc(fandom):''}</div>${seriesUrl?`<div class="actions"><button onclick="window.open(${JSON.stringify(seriesUrl)},'_blank')">元のシリーズを開く ↗</button></div>`:''}
+ showPage(name,`<section class="hero panel"><div class="tiny">SERIES</div><h1>${esc(name)}</h1><div class="author">${esc(author)}${fandom?' ・ '+esc(fandom):''}</div>${seriesUrl?`<div class="actions"><button onclick='window.open(${jsArg(seriesUrl)},"_blank")'>元のシリーズを開く ↗</button></div>`:''}
  <div>${tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>
  <div class="seriesStats"><div class="seriesStat"><b>${items.length}</b><span class="tiny">登録作品</span></div><div class="seriesStat"><b>${read}</b><span class="tiny">読了</span></div><div class="seriesStat"><b>${clips}</b><span class="tiny">拾った本文</span></div></div>
  ${latest?`<div class="tiny" style="margin-top:10px">最後に触った作品：${esc(latest.title||'タイトル未取得')} ・ ${daysAgo(latest.lastRead||latest.updatedAt)}</div>`:''}</section>
@@ -740,7 +741,7 @@ showWork=function(id){_showWorkBase(id);restoreDetailScroll()};
 window.openBook=id=>{const b=books.find(x=>x.id===id);rememberCurrentWork(b);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'continue'});persist();window.open(b.url,'_blank','noopener')};
 window.deleteWork=id=>{const b=books.find(x=>x.id===id);if(!b)return;const name=b.title||'タイトル未取得';if(confirm(`『${name}』をYomitsugiから削除しますか？`)){books=books.filter(x=>x.id!==id);persist(false);showHome();showToast('削除しました')}};
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.5.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.11.8.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function acceptQuery(){
  const p=new URLSearchParams(location.search);let raw=p.get('text')||p.get('share')||'';
@@ -813,35 +814,43 @@ function saveSharedText(raw,destination=null){
 }
 (function shortcutIntakeBridge(){
   const params=new URLSearchParams(location.search);
-  const raw=params.get('intake');
+  let raw=params.get('intake') || params.get('share') || params.get('text') || '';
   if(!raw) return;
-  setTimeout(()=>{
-    try{
-      const parsed=extractIntake(raw);
-      history.replaceState(null,'',location.pathname+location.hash);
-      if(parsed.url){
-        const b=pickup(raw,{silent:true});
-        if(!b){showToast('作品を受け取れませんでした');return}
-        rememberCurrentWork(b);
-        if(!document.getElementById('duplicateDialog')?.open) showWork(b.id);
-        showToast('作品を拾ったよ。この作品を読書中として覚えました');
-        return;
-      }
-      const state=currentWorkState();
-      if(!state.book || state.age>30*60*1000){
-        openShareDestinationChooser(raw);
-        showToast(state.book?'保存先を確認してね':'保存先の作品を選んでね');
-        return;
-      }
-      const b=saveSharedText(raw,state.book);
-      if(!b){openShareDestinationChooser(raw);return}
-      showWork(b.id);
-      showToast('選択した本文をこの作品に挟んだよ');
-    }catch(e){
-      console.error(e);
-      showToast('受け取りに失敗しました');
+
+  // Shortcuts normally URL-encodes once. If an encoded URL/text somehow arrives
+  // one layer deeper, unwrap it once without breaking ordinary Japanese text.
+  if(!/https?:\/\//i.test(raw) && /%[0-9A-Fa-f]{2}/.test(raw)){
+    try{ const decoded=decodeURIComponent(raw); if(decoded) raw=decoded; }catch{}
+  }
+
+  // Remove the query immediately so reload/back cannot import the same share twice.
+  history.replaceState(null,'',location.pathname+location.hash);
+
+  try{
+    const parsed=extractIntake(raw);
+    if(parsed.url){
+      const b=pickup(raw,{silent:true});
+      if(!b){ showToast('作品を受け取れませんでした'); return; }
+      rememberCurrentWork(b);
+      if(!document.getElementById('duplicateDialog')?.open) showWork(b.id);
+      showToast('作品を拾ったよ。この作品を本文の保存先にしました');
+      return;
     }
-  },120);
+
+    const state=currentWorkState();
+    if(!state.book || state.age>30*60*1000){
+      openShareDestinationChooser(raw);
+      showToast(state.book?'保存先を確認してね':'保存先の作品を選んでね');
+      return;
+    }
+    const b=saveSharedText(raw,state.book);
+    if(!b){ openShareDestinationChooser(raw); return; }
+    showWork(b.id);
+    showToast('選択した本文をこの作品に挟んだよ');
+  }catch(e){
+    console.error(e);
+    showToast('受け取りに失敗しました');
+  }
 })();
 
 </script>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.12.3 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.12.4 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -16,7 +16,7 @@ button,.buttonlike{border:0;border-radius:12px;padding:11px 14px;font-weight:700
 button.secondary,.buttonlike.secondary{background:var(--soft);color:var(--accent)}button.ghost{background:transparent;color:var(--muted);padding:7px}.dangerZone{margin-top:28px;border-color:#ead7d7;background:#fffafa}.dangerBtn{background:#fff!important;color:#9a4d4d!important;border:1px solid #e7caca!important}
 label{display:block;font-size:12px;color:var(--muted);margin:10px 0 5px}.title{font-weight:800;font-size:17px}
 .pill{display:inline-block;background:var(--soft);color:var(--accent);padding:5px 9px;border-radius:999px;font-size:11px;margin:3px 4px 0 0}
-.tag{display:inline-block;border:1px solid var(--line);padding:4px 8px;border-radius:999px;font-size:11px;margin:3px 4px 0 0}
+.tag{display:inline-block;border:1px solid var(--line);padding:4px 8px;border-radius:999px;font-size:11px;margin:3px 4px 0 0;max-width:100%;overflow-wrap:anywhere}.tagCloud{display:flex;flex-wrap:wrap;gap:2px;align-items:flex-start;max-height:58px;overflow:hidden}.tagCloud.expanded{max-height:none}.tagCloudToggle{background:transparent!important;color:var(--accent)!important;padding:4px 2px!important;font-size:11px}
 .needs{background:#fff4dc;color:#8a6421}.actions,.topActions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.empty{text-align:center;color:var(--muted);padding:34px 10px}.hidden{display:none!important}
 .notice{font-size:12px;background:var(--warn);border:1px solid #eadfa9;padding:10px;border-radius:12px;margin-top:12px}.ok{background:var(--ok);border-color:#d7ead7}
 .clip{border-left:3px solid var(--line);padding-left:10px;margin:10px 0;white-space:pre-wrap}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -56,7 +56,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 </style>
 </head><body><main>
-<div class="brand">Yomitsugi <span class="tiny">v0.12.3</span></div>
+<div class="brand">Yomitsugi <span class="tiny">v0.12.4</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 <div id="intakeDebug" class="notice hidden" style="white-space:pre-wrap;word-break:break-all"></div>
 
@@ -209,7 +209,23 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const jsArg=s=>JSON.stringify(String(s||'')).replace(/&/g,'&amp;').replace(/'/g,'&#39;');
 const uid=()=>{try{return crypto.randomUUID()}catch{return 'yomi-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}};
-const tagArray=v=>Array.isArray(v)?v:String(v||'').split(/[,、#\n]+/).map(x=>x.trim()).filter(Boolean);
+const tagArray=v=>{
+ const clean=x=>String(x||'').trim().replace(/^#+/,'').trim();
+ const uniq=a=>[...new Set(a.map(clean).filter(Boolean))];
+ if(Array.isArray(v))return uniq(v);
+ const raw=String(v||'').trim();if(!raw)return [];
+ // #付きコピーは # を境界として復元。# が消えたコピーは空白もタグ境界として扱う。
+ if(raw.includes('#'))return uniq(raw.split(/#+/).flatMap(x=>x.split(/[,、\n]+/)));
+ const coarse=raw.split(/[,、\n]+/).map(x=>x.trim()).filter(Boolean);
+ if(coarse.length>1)return uniq(coarse);
+ return uniq(raw.split(/\s+/));
+};
+function tagCloud(tags,id=''){
+ const a=tagArray(tags);if(!a.length)return '<span class=\"tiny\">タグなし</span>';
+ const key='tagcloud_'+String(id||uid()).replace(/[^a-zA-Z0-9_-]/g,'');
+ return `<div class=\"tagCloud\" id=\"${key}\">${a.map(t=>`<span class=\"tag\">#${esc(t)}</span>`).join('')}</div>${a.length>8?`<button type=\"button\" class=\"tagCloudToggle\" onclick=\"toggleTagCloud('${key}',this)\">すべて表示（${a.length}件）</button>`:''}`;
+}
+window.toggleTagCloud=(id,btn)=>{const el=$(id);if(!el)return;const open=el.classList.toggle('expanded');btn.textContent=open?'折りたたむ':`すべて表示（${el.children.length}件）`};
 function normalizeUrl(raw){
  try{
   const u=new URL(String(raw||'').trim());u.hash='';
@@ -369,7 +385,7 @@ function editField(id,field,label,multiline=true){
  const box=document.querySelector(`[data-section="${field}"]`);
  if(!box)return;
  box.innerHTML=`<div class="inlineHead"><h3>${esc(label)}</h3></div>
- <div class="inlineForm">${multiline?`<textarea id="inline_${field}">${esc(current)}</textarea>`:`<input id="inline_${field}" value="${esc(current)}">`}
+ <div class="inlineForm">${multiline?`<textarea id="inline_${field}" ${field==='tags'?'placeholder="#タグ1 #タグ2 / 空白・改行・カンマ区切りでもOK"':''}>${esc(current)}</textarea>`:`<input id="inline_${field}" value="${esc(current)}">`}
  <div class="actions"><button onclick="saveInline('${id}','${field}')">保存</button><button class="secondary" onclick="showWork('${id}')">キャンセル</button></div></div>`;
 }
 window.saveInline=(id,field)=>saveWorkField(id,field,$(`inline_${field}`).value.trim());
@@ -538,7 +554,7 @@ window.showWork=id=>{
    </div>
    <div data-section="title"><div class="basicLine"><h1 class="grow">${esc(b.title||'タイトル未取得')}</h1><button class="miniEdit" onclick="editField('${b.id}','title','タイトル',false)">✎</button></div></div>
    <div data-section="author"><div class="basicLine"><div class="author grow">${esc(b.author||'作者未取得')}</div><button class="miniEdit" onclick="editField('${b.id}','author','作者',false)">✎</button></div></div>
-   <div data-section="tags"><div class="basicLine"><div class="grow">${tagArray(b.tags).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')||'<span class="tiny">タグなし</span>'}</div><button class="miniEdit" onclick="editField('${b.id}','tags','タグ',false)">✎</button></div></div>
+   <div data-section="tags"><div class="basicLine"><div class="grow">${tagCloud(b.tags,b.id)}</div><button class="miniEdit" onclick="editField('${b.id}','tags','タグ',true)">✎</button></div></div>
    <div data-section="progress"><div class="tiny" style="margin-top:10px">${b.progress?'前回：'+esc(b.progress)+' ・ ':''}${b.lastRead?'最終読書 '+daysAgo(b.lastRead):'まだ読書日時なし'}</div></div>
    <div class="actions">${b.url?`<button onclick="openBook('${b.id}')">続きを読む</button>`:''}<button class="secondary" onclick="editField('${b.id}','progress','読書位置',false)">読書位置 ✎</button></div>
   </section>

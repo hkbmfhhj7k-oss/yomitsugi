@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.14.1 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.15.0 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -54,9 +54,12 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .seriesGrid{display:grid;gap:9px}.seriesIndexCard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:left;width:100%;color:inherit}.seriesIndexCard .seriesName{font-weight:800;font-size:14px}.seriesIndexMeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .groupCard{margin:9px 0;border:1px solid var(--line);border-radius:16px;background:var(--card);overflow:hidden}.groupHead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 12px;cursor:pointer}.groupName{font-weight:800}.groupCount{font-size:10px;color:var(--muted);margin-left:6px}.groupBody{display:none;padding:0 12px 10px}.groupCard.open .groupBody{display:block}.groupEntry{padding:8px 0;border-top:1px solid var(--line)}.groupSlot{font-size:11px;font-weight:800;color:var(--muted);margin-bottom:3px}.groupText{white-space:pre-wrap;font-size:13px;line-height:1.55}.groupEntryTools{display:none;gap:5px;margin-top:6px}.groupEntry.active .groupEntryTools{display:flex}.groupEntryToggle{background:transparent!important;color:var(--accent)!important;padding:3px 5px!important;font-size:11px}.groupAdd{margin-top:7px;width:100%;background:var(--soft)!important;color:var(--accent)!important}.groupEditBox{margin-top:6px}.groupEditBox textarea{min-height:84px}
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
+
+/* v0.15.0 usability pass */
+.clickTag{background:#f8f3e8!important;color:#6f5d45!important;border:1px solid #e5d6bd!important;padding:5px 9px!important;border-radius:8px 8px 8px 3px!important;font-size:11px!important;font-weight:700!important;box-shadow:0 2px 6px #6b56300b}.clickTag:before{content:"🏷︎ ";font-size:9px}.tagCloud{max-height:none;overflow:visible}.tagHidden{display:none!important}.tagCloud.expanded .tagHidden{display:inline-flex!important}.tagFilterBar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}.pager{display:flex;justify-content:center;gap:6px;align-items:center;flex-wrap:wrap;margin:16px 0 6px}.pager button{min-width:38px;padding:8px 10px}.pager .active{background:var(--accent);color:#fff}.refreshBtn{padding:9px 11px!important}.shelfSummary{font-size:11px;color:var(--muted);white-space:nowrap}.spine.deluxe{border:2px double #b49a65;background:linear-gradient(90deg,#e8ddc2,#f8f0dc,#d7c397);box-shadow:inset 0 0 0 2px #fff8,0 2px 6px #0001}.spine.royal{border:2px double #8c6f40;background:linear-gradient(90deg,#cbb47b,#f5e7b3,#a9894c);box-shadow:inset 0 0 0 2px #fff9,0 2px 8px #0002}.clipSort{margin-left:auto}.filterLink{background:none!important;color:var(--accent)!important;padding:0!important;font-weight:700}.hero [data-section="title"]{clear:both;margin-top:10px}.hero [data-section="tags"]{margin-top:8px}
 </style>
 </head><body><main>
- <div class="brand">Yomitsugi <span class="tiny">v0.14.1</span></div>
+ <div class="brand">Yomitsugi <span class="tiny">v0.15.0</span></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 <div id="intakeDebug" class="notice hidden" style="white-space:pre-wrap;word-break:break-all"></div>
 
@@ -97,10 +100,13 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
   <button class="secondary" id="exportBtn">書き出す</button>
   <button class="secondary" id="dbCopyBtn">D1へコピー</button>
   <button class="secondary" id="dbConnectBtn">D1接続</button>
+  <button class="secondary refreshBtn" id="dbQuickReloadBtn" title="D1から最新データを読み込む">↻ 更新</button>
   <span class="tiny" id="dbStatus">端末データ</span>
   <label style="margin:0"><span class="buttonlike secondary">読み込む</span><input id="importFile" type="file" accept="application/json" class="hidden"></label>
  </div>
+ <div id="activeTagFilter" class="tagFilterBar hidden"></div>
  <section id="list"></section>
+ <div id="pager" class="pager"></div>
  </div>
 </div>
 <div id="pageView" class="hidden">
@@ -286,6 +292,13 @@ const KEY='yomitsugi.v1';
 const CURRENT_KEY='yomitsugi.currentWork.v1';
 let books=[]; try{books=JSON.parse(localStorage.getItem(KEY)||'[]')}catch{books=[]}
 let activeFilter='all';
+let activeTag='';
+let currentPage=1;
+const PAGE_SIZE=10;
+const CLIP_ORDER_KEY='yomitsugi.clipOrder.v1';
+let clipOrder=localStorage.getItem(CLIP_ORDER_KEY)||'oldest';
+let navStack=[];
+let restoringNav=false;
 const $=id=>document.getElementById(id);
 const esc=s=>String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const jsArg=s=>JSON.stringify(String(s||'')).replace(/&/g,'&amp;').replace(/'/g,'&#39;');
@@ -302,11 +315,14 @@ const tagArray=v=>{
  return uniq(raw.split(/\s+/));
 };
 function tagCloud(tags,id=''){
- const a=tagArray(tags);if(!a.length)return '<span class=\"tiny\">タグなし</span>';
+ const a=tagArray(tags);if(!a.length)return '<span class="tiny">タグなし</span>';
  const key='tagcloud_'+String(id||uid()).replace(/[^a-zA-Z0-9_-]/g,'');
- return `<div class=\"tagCloud\" id=\"${key}\">${a.map(t=>`<span class=\"tag\">#${esc(t)}</span>`).join('')}</div>${a.length>8?`<button type=\"button\" class=\"tagCloudToggle\" onclick=\"toggleTagCloud('${key}',this)\">すべて表示（${a.length}件）</button>`:''}`;
+ const limit=6;
+ return `<div class="tagCloud" id="${key}">${a.map((t,i)=>`<button type="button" class="clickTag${i>=limit?' tagHidden':''}" onclick='filterByTag(${jsArg(t)})'>#${esc(t)}</button>`).join('')}</div>${a.length>limit?`<button type="button" class="tagCloudToggle" onclick="toggleTagCloud('${key}',this)">＋${a.length-limit}件</button>`:''}`;
 }
-window.toggleTagCloud=(id,btn)=>{const el=$(id);if(!el)return;const open=el.classList.toggle('expanded');btn.textContent=open?'折りたたむ':`すべて表示（${el.children.length}件）`};
+window.toggleTagCloud=(id,btn)=>{const el=$(id);if(!el)return;const open=el.classList.toggle('expanded');btn.textContent=open?'折りたたむ':`＋${el.querySelectorAll('.tagHidden').length}件`};
+window.filterByTag=tag=>{activeTag=String(tag||'');currentPage=1;showHome({preserve:true});render();requestAnimationFrame(()=>$('list')?.scrollIntoView({block:'start'}))};
+window.clearTagFilter=()=>{activeTag='';currentPage=1;render()};
 function normalizeUrl(raw){
  try{
   const u=new URL(String(raw||'').trim());u.hash='';
@@ -484,14 +500,17 @@ function rememberDetailScroll(){detailScrollRestore=window.scrollY}
 function restoreDetailScroll(){if(detailScrollRestore===null)return;const y=detailScrollRestore;detailScrollRestore=null;requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'})))}
 function showToast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');clearTimeout(showToast.t);showToast.t=setTimeout(()=>$('toast').classList.add('hidden'),2200)}
 function renderShelf(){
- $('bookCount').textContent=`${books.length}件`;
- $('shelf').innerHTML=books.map((b,i)=>{
-  // Stable pseudo-random shape per work: varied shelf, no reshuffle on every render.
-  const seed=String(b.id||b.sourceKey||i).split('').reduce((h,ch)=>Math.imul(h^ch.charCodeAt(0),16777619)>>>0,2166136261);
-  const height=30+(seed%35);
-  const width=10+((seed>>>7)%8);
-  const tilt=((seed>>>13)%9===0)?-2:((seed>>>17)%11===0?2:0);
-  return `<span class="spine" title="${i+1}冊目" style="height:${height}px;width:${width}px;transform:rotate(${tilt}deg);flex:0 0 ${width}px"></span>`;
+ const now=new Date(),ym=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+ const monthly=books.filter(b=>String(b.capturedAt||b.updatedAt||'').slice(0,7)===ym);
+ $('bookCount').innerHTML=`<span class="shelfSummary">今月 ${monthly.length}冊 ・ 累計 ${books.length}冊</span>`;
+ // 10冊→装飾本、100冊→豪華本。高さは増やさず読書量を圧縮して見せる。
+ let n=monthly.length, units=[];
+ while(n>=100){units.push({kind:'royal',count:100});n-=100}
+ while(n>=10){units.push({kind:'deluxe',count:10});n-=10}
+ for(let i=0;i<n;i++)units.push({kind:'normal',count:1});
+ $('shelf').innerHTML=units.map((u,i)=>{
+  const seed=(i+1)*2654435761>>>0,height=u.kind==='royal'?66:u.kind==='deluxe'?60:30+(seed%30),width=u.kind==='royal'?24:u.kind==='deluxe'?19:10+((seed>>>7)%7);
+  return `<span class="spine ${u.kind==='normal'?'':u.kind}" title="${u.count}冊分" style="height:${height}px;width:${width}px;flex:0 0 ${width}px"></span>`;
  }).join('');
 }
 function compactCard(b){
@@ -500,9 +519,9 @@ function compactCard(b){
    <button class="linkish grow" onclick="showWork('${b.id}')"><span class="title">${esc(b.title||'タイトル未取得')}</span></button>
    <span class="pill">${esc(b.readingStatus)}</span>
   </div>
-  <div class="meta">${esc(b.author||'作者未取得')}${b.fandom?' ・ '+esc(b.fandom):''}</div>
-  ${b.series?`<button class="linkish tiny" onclick='showSeriesByName(${jsArg(b.series)})'>${esc(b.series)} ＞</button>`:''}
-  <div>${tagArray(b.tags).slice(0,4).map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}${tagArray(b.tags).length>4?`<span class="tiny"> +${tagArray(b.tags).length-4}</span>`:''}</div>
+  <div class="meta">${b.author?`<button class="filterLink" onclick='filterByText(${jsArg(b.author)})'>${esc(b.author)}</button>`:'作者未取得'}${b.fandom?` ・ <button class="filterLink" onclick='filterByText(${jsArg(b.fandom)})'>${esc(b.fandom)}</button>`:''}</div>
+  ${b.series?`<button class="linkish tiny" onclick='showSeriesByName(${jsArg(b.series)},${jsArg(b.author||'')})'>${esc(b.series)} ＞</button>`:''}
+  <div>${tagArray(b.tags).slice(0,3).map(t=>`<button type="button" class="clickTag" onclick='filterByTag(${jsArg(t)})'>#${esc(t)}</button>`).join('')}${tagArray(b.tags).length>3?`<span class="tiny"> ＋${tagArray(b.tags).length-3}</span>`:''}</div>
   <div class="tiny" style="margin-top:6px">${b.progress?'前回：'+esc(b.progress)+' ・ ':''}${b.lastRead?'最終読書 '+daysAgo(b.lastRead):'保存 '+daysAgo(b.capturedAt)}</div>
   <div class="actions">
    ${b.url?`<button onclick="event.stopPropagation();openBook('${b.id}')">読む</button>`:''}
@@ -515,31 +534,39 @@ function render(){
  const q=$('search').value.trim().toLowerCase();
  let arr=[...books].filter(b=>{
    const f=activeFilter==='all'||(activeFilter==='needsReview'?b.metadataStatus==='needsReview':b.readingStatus===activeFilter);
-   return f&&(!q||searchable(b).includes(q))
+   const tagOK=!activeTag||tagArray(b.tags).includes(activeTag);
+   return f&&tagOK&&(!q||searchable(b).includes(q));
  }).sort((a,b)=>(b.lastRead||b.capturedAt||'').localeCompare(a.lastRead||a.capturedAt||''));
- $('list').innerHTML=arr.length?arr.map(compactCard).join(''):'<div class="empty">該当する記録はありません。</div>';
+ const pages=Math.max(1,Math.ceil(arr.length/PAGE_SIZE));currentPage=Math.min(Math.max(1,currentPage),pages);
+ const shown=arr.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
+ $('list').innerHTML=shown.length?shown.map(compactCard).join(''):'<div class="empty">該当する記録はありません。</div>';
+ $('activeTagFilter').classList.toggle('hidden',!activeTag);
+ $('activeTagFilter').innerHTML=activeTag?`<span class="tiny">タグで絞り込み：</span><button type="button" class="clickTag" onclick="clearTagFilter()">#${esc(activeTag)} ×</button>`:'';
+ $('pager').innerHTML=pages>1?`${currentPage>1?`<button class="secondary" onclick="goPage(${currentPage-1})">‹</button>`:''}${Array.from({length:pages},(_,i)=>i+1).filter(n=>n===1||n===pages||Math.abs(n-currentPage)<=1).map((n,i,a)=>`${i&&n-a[i-1]>1?'<span class="tiny">…</span>':''}<button class="secondary ${n===currentPage?'active':''}" onclick="goPage(${n})">${n}</button>`).join('')}${currentPage<pages?`<button class="secondary" onclick="goPage(${currentPage+1})">›</button>`:''}`:'';
 }
+window.goPage=n=>{currentPage=n;render();requestAnimationFrame(()=>$('list')?.scrollIntoView({block:'start'}))};
+window.filterByText=text=>{$('search').value=String(text||'');activeTag='';currentPage=1;showHome({preserve:true});render();requestAnimationFrame(()=>$('list')?.scrollIntoView({block:'start'}))};
+
 
 let homeMode='works';
 function seriesGroups(){
  const map=new Map();
  books.filter(b=>String(b.series||'').trim()).forEach(b=>{
-  const name=String(b.series).trim();if(!map.has(name))map.set(name,[]);
-  map.get(name).push(b);
+  const name=String(b.series).trim(),author=String(b.author||'').trim(),key=name+'\u0000'+author;if(!map.has(key))map.set(key,{name,author,items:[]});
+  map.get(key).items.push(b);
  });
- return [...map.entries()].sort((a,b)=>{
-  const ad=Math.max(...a[1].map(x=>Date.parse(x.lastRead||x.updatedAt||x.capturedAt||0)||0));
-  const bd=Math.max(...b[1].map(x=>Date.parse(x.lastRead||x.updatedAt||x.capturedAt||0)||0));
-  return bd-ad||a[0].localeCompare(b[0],'ja');
+ return [...map.values()].sort((a,b)=>{
+  const ad=Math.max(...a.items.map(x=>Date.parse(x.lastRead||x.updatedAt||x.capturedAt||0)||0));
+  const bd=Math.max(...b.items.map(x=>Date.parse(x.lastRead||x.updatedAt||x.capturedAt||0)||0));
+  return bd-ad||a.name.localeCompare(b.name,'ja');
  });
 }
 function renderSeriesIndex(){
  const groups=seriesGroups();
- $('seriesList').innerHTML=groups.length?`<div class="seriesGrid">${groups.map(([name,items])=>{
+ $('seriesList').innerHTML=groups.length?`<div class="seriesGrid">${groups.map(({name,author,items})=>{
   const latest=[...items].sort((a,b)=>(b.lastRead||b.updatedAt||b.capturedAt||'').localeCompare(a.lastRead||a.updatedAt||a.capturedAt||''))[0];
   const read=items.filter(x=>x.readingStatus==='読了').length;
-  const author=items.find(x=>x.author)?.author||'';
-  return `<button type="button" class="seriesIndexCard" onclick='showSeriesByName(${jsArg(name)})'><div class="seriesName">${esc(name)}</div>${author?`<div class="tiny">${esc(author)}</div>`:''}<div class="seriesIndexMeta"><span class="pill">${items.length}話</span>${read?`<span class="tiny">読了 ${read}</span>`:''}${latest?`<span class="tiny">最終 ${daysAgo(latest.lastRead||latest.updatedAt||latest.capturedAt)}</span>`:''}</div></button>`;
+  return `<button type="button" class="seriesIndexCard" onclick='showSeriesByName(${jsArg(name)},${jsArg(author)})'><div class="seriesName">${esc(name)}</div>${author?`<div class="tiny">${esc(author)}</div>`:''}<div class="seriesIndexMeta"><span class="pill">${items.length}話</span>${read?`<span class="tiny">読了 ${read}</span>`:''}${latest?`<span class="tiny">最終 ${daysAgo(latest.lastRead||latest.updatedAt||latest.capturedAt)}</span>`:''}</div></button>`;
  }).join('')}</div>`:'<div class="empty">シリーズ登録された作品はまだありません。</div>';
 }
 function setHomeMode(mode){
@@ -550,17 +577,29 @@ function setHomeMode(mode){
  $('seriesTab').classList.toggle('active',homeMode==='series');
  if(homeMode==='series')renderSeriesIndex();else render();
 }
-function showHome(){
+function captureView(){
+ if(!$('pageView').classList.contains('hidden'))return {kind:'page',title:$('pageNavTitle').textContent,html:$('pageContent').innerHTML,scroll:window.scrollY};
+ return {kind:'home',scroll:window.scrollY,page:currentPage,filter:activeFilter,tag:activeTag,query:$('search').value,mode:homeMode};
+}
+function showHome(opts={}){
  $('pageView').classList.add('hidden');$('homeView').classList.remove('hidden');
  document.querySelectorAll('main > .panel').forEach(x=>x.classList.remove('hidden'));
- setHomeMode(homeMode);scrollTo({top:0,behavior:'instant'});
+ setHomeMode(homeMode);if(!opts.preserve)scrollTo({top:0,behavior:'instant'});
 }
 function showPage(title,body){
+ if(!restoringNav){const cur=captureView();if(cur.kind==='home'||cur.title!==title)navStack.push(cur)}
  document.querySelectorAll('main > .panel').forEach(x=>x.classList.add('hidden'));
  $('homeView').classList.add('hidden');$('pageView').classList.remove('hidden');
  $('pageNavTitle').textContent=title;$('pageContent').innerHTML=body;scrollTo({top:0,behavior:'instant'});
 }
+function restoreView(v){
+ if(!v)return showHome();restoringNav=true;
+ if(v.kind==='home'){currentPage=v.page||1;activeFilter=v.filter||'all';activeTag=v.tag||'';$('search').value=v.query||'';homeMode=v.mode||'works';showHome({preserve:true});render();requestAnimationFrame(()=>requestAnimationFrame(()=>scrollTo({top:v.scroll||0,behavior:'instant'})))}
+ else{document.querySelectorAll('main > .panel').forEach(x=>x.classList.add('hidden'));$('homeView').classList.add('hidden');$('pageView').classList.remove('hidden');$('pageNavTitle').textContent=v.title;$('pageContent').innerHTML=v.html;requestAnimationFrame(()=>requestAnimationFrame(()=>scrollTo({top:v.scroll||0,behavior:'instant'})))}
+ restoringNav=false;
+}
 function splitLines(s){return String(s||'').split(/\n+/).map(x=>x.trim()).filter(Boolean)}
+
 function objectList(s){return splitLines(s).map(x=>`<div class="objectCard">${esc(x)}</div>`).join('')}
 
 
@@ -612,15 +651,16 @@ window.commitListEdit=(id,field,index,btn)=>{
  if(v)lines[index]=v;else if(p)removeStructuredUsage(b,field,p);
  lines.splice(index,1);b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('保存したよ');
 };
+const EMPTY_NOTE='__YOMITSUGI_EMPTY__';
 function parseStructuredItem(raw){
  const text=String(raw||'');if(!text.startsWith('§'))return null;
- const p=text.slice(1).split('§');return {name:p[0]||'',slot:p[1]||'',body:(p.slice(2).join('§')||'').replaceAll('↵','\n')};
+ const p=text.slice(1).split('§');let body=(p.slice(2).join('§')||'').replaceAll('↵','\n');if(body===EMPTY_NOTE)body='';return {name:p[0]||'',slot:p[1]||'',body};
 }
 function renderStructuredItem(raw){
  const p=parseStructuredItem(raw);if(!p)return esc(raw);
  return `<div class="nestedTitle">${esc(p.name)}${p.slot?` <span class="tiny">› ${esc(p.slot)}</span>`:''}</div>${p.body?`<div class="nestedBody">${esc(p.body)}</div>`:''}`;
 }
-function structuredValue(name,slot,body){name=String(name||'').trim();slot=String(slot||'').trim();body=String(body||'').trim().replace(/\r?\n/g,'↵');return name?`§${name}§${slot}§${body}`:body}
+function structuredValue(name,slot,body){name=String(name||'').trim();slot=String(slot||'').trim();body=String(body||'').trim().replace(/\r?\n/g,'↵');if(name&&!body)body=EMPTY_NOTE;return name?`§${name}§${slot}§${body}`:body}
 function usageLabel(u){
  const top=u.field==='charactersText'?'登場人物':u.field==='relationsText'?'関係':u.field==='eventsText'?'重要イベント':u.label||'';
  return [top,u.name,u.slot].filter(Boolean).join(' › ');
@@ -658,7 +698,7 @@ function groupedSection(id,field,title,noun){
  const groups=data.groups.map((g,gi)=>{const count=g.slots.reduce((n,sg)=>n+sg.items.length,0);return `<div class="groupCard" id="group_${field}_${gi}">
   <div class="groupHead" onclick="toggleGroupCard('${field}',${gi})"><div><span class="groupName">${esc(g.name)}</span><span class="groupCount">${count}件</span></div><span>⌄</span></div>
   <div class="groupBody">${g.slots.map((sg,si)=>`<div class="groupSlotBlock"><div class="groupSlot">${esc(sg.slot)}</div>${sg.items.map((it,ii)=>`<div class="groupEntry" id="groupEntry_${field}_${gi}_${si}_${ii}">
-    <div class="groupText">${esc(it.body||'')}</div>
+    <div class="groupText">${it.body?esc(it.body):'<span class="tiny">未記入</span>'}</div>
     <button type="button" class="groupEntryToggle" onclick="toggleGroupEntry(event,'${field}',${gi},'${si}_${ii}')">操作</button>
     <div class="groupEntryTools"><button type="button" class="miniEdit" onclick="editGroupedItem('${id}','${field}',${it.index},'${field}_${gi}_${si}_${ii}')">✎ 編集</button><button type="button" class="deleteMini" onclick="deleteListItem('${id}','${field}',${it.index})">削除</button></div>
    </div>`).join('')}</div>`).join('')}
@@ -678,7 +718,7 @@ window.editGroupedItem=(id,field,index,key)=>{
 };
 window.commitGroupedEdit=(id,field,index,key)=>{
  const b=books.find(x=>x.id===id);if(!b)return;const lines=splitLines(b[field]),p=parseStructuredItem(lines[index]),el=document.getElementById('groupEntry_'+key),v=el?.querySelector('textarea')?.value.trim();if(!p||v===undefined)return;
- if(v)lines[index]=structuredValue(p.name,p.slot,v);else lines.splice(index,1);
+ lines[index]=structuredValue(p.name,p.slot,v);
  b[field]=lines.join('\n');b.updatedAt=new Date().toISOString();persist(false);showWork(id);showToast('保存したよ');
 };
 window.openStructuredAdd=(id,field)=>{
@@ -743,7 +783,7 @@ window.showWork=id=>{
  showPage(b.title||'作品詳細',`
   <section class="hero panel">
    <div class="basicLine">
-    <div class="tiny grow">${b.fandom?esc(b.fandom)+' / ':''}${b.series?`<button class="linkish" onclick='showSeriesByName(${jsArg(b.series)})'>シリーズ：${esc(b.series)} ＞</button>`:''}${b.seriesUrl?` <button class="linkish" onclick='window.open(${jsArg(b.seriesUrl)},"_blank")'>元シリーズ ↗</button>`:''}</div>
+    <div class="tiny grow">${b.fandom?esc(b.fandom)+' / ':''}${b.series?`<button class="linkish" onclick='showSeriesByName(${jsArg(b.series)},${jsArg(b.author||'')})'>シリーズ：${esc(b.series)} ＞</button>`:''}${b.seriesUrl?` <button class="linkish" onclick='window.open(${jsArg(b.seriesUrl)},"_blank")'>元シリーズ ↗</button>`:''}</div>
     <button class="miniEdit" onclick="quickField('${b.id}','fandom','原作')">原作 ✎</button>
     <button class="miniEdit" onclick="quickField('${b.id}','series','シリーズ')">シリーズ ✎</button>
     <button class="miniEdit" onclick="quickField('${b.id}','seriesUrl','シリーズURL')">URL ✎</button>
@@ -755,9 +795,9 @@ window.showWork=id=>{
    <div class="actions">${b.url?`<button onclick="openBook('${b.id}')">続きを読む</button>`:''}<button class="secondary" onclick="editField('${b.id}','progress','読書位置',false)">読書位置 ✎</button></div>
   </section>
 
-  <section class="detailSection"><div class="inlineHead"><h3>拾った本文</h3><span class="tiny">${(b.textClips||[]).length}件</span></div>
+  <section class="detailSection"><div class="inlineHead"><h3>拾った本文</h3><span class="tiny">${(b.textClips||[]).length}件</span><button type="button" class="miniEdit clipSort" onclick="toggleClipOrder('${b.id}')">${clipOrder==='oldest'?'古い順 ↑':'新しい順 ↓'}</button></div>
   <div class="tiny">普段は本文だけ。使いたい文章を選択するか「操作」を押すとメニューが開きます。</div>
-  ${(b.textClips||[]).length?`<div class="clipList">`+(b.textClips||[]).slice().reverse().map(c=>`<div class="clipItem" id="clip_${esc(c.id||'')}">
+  ${(b.textClips||[]).length?`<div class="clipList">`+(clipOrder==='oldest'?(b.textClips||[]).slice().sort((a,b)=>String(a.capturedAt||'').localeCompare(String(b.capturedAt||''))):(b.textClips||[]).slice().sort((a,b)=>String(b.capturedAt||'').localeCompare(String(a.capturedAt||'')))).map(c=>`<div class="clipItem" id="clip_${esc(c.id||'')}">
     <div class="clipText" data-clip-id="${esc(c.id||'')}" onpointerup="clipSelectionChanged('${b.id}','${c.id||''}',this)" ontouchend="setTimeout(()=>clipSelectionChanged('${b.id}','${c.id||''}',this),80)">${esc(c.text)}</div>
     <div class="clipMeta"><div class="tiny">${new Date(c.capturedAt).toLocaleString('ja-JP')}</div><div class="clipMetaBtns"><button type="button" class="clipMore" onclick="toggleClipExpand('${c.id||''}')">もっと見る</button><button type="button" class="clipToggle" onclick="toggleClipActions('${c.id||''}')">操作</button></div></div>
     ${(c.usedTo||[]).length?`<div class="clipUsed">使用先：${(c.usedTo||[]).map(x=>esc(x)).join('・')}</div>`:''}
@@ -776,19 +816,20 @@ window.showWork=id=>{
   <section class="detailSection dangerZone"><h3>作品の削除</h3><div class="tiny">この作品だけをYomitsugiから削除します。シリーズ内のほかの作品は残ります。</div><div class="actions"><button class="dangerBtn" onclick="deleteWork('${b.id}')">この作品を削除</button></div></section>
  `);
 }
-window.showSeriesByName=name=>{
- const items=books.filter(b=>b.series===name).sort((a,b)=>(a.capturedAt||'').localeCompare(b.capturedAt||''));
- const author=items.find(x=>x.author)?.author||'', fandom=items.find(x=>x.fandom)?.fandom||'', seriesUrl=items.find(x=>x.seriesUrl)?.seriesUrl||'';
+window.showSeriesByName=(name,author='')=>{
+ const items=books.filter(b=>b.series===name&&(!author||String(b.author||'')===String(author))).sort((a,b)=>(a.capturedAt||'').localeCompare(b.capturedAt||''));
+ const seriesAuthor=author||items.find(x=>x.author)?.author||'', fandom=items.find(x=>x.fandom)?.fandom||'', seriesUrl=items.find(x=>x.seriesUrl)?.seriesUrl||'';
  const tags=[...new Set(items.flatMap(x=>tagArray(x.tags)))], clips=items.reduce((n,x)=>n+(x.textClips||[]).length,0), read=items.filter(x=>x.readingStatus==='読了').length;
  const latest=[...items].sort((a,b)=>(b.lastRead||b.updatedAt||'').localeCompare(a.lastRead||a.updatedAt||''))[0];
  const recaps=items.filter(x=>x.recap||x.episodeSummary||x.eventsText);
- showPage(name,`<section class="hero panel"><div class="tiny">SERIES</div><h1>${esc(name)}</h1><div class="author">${esc(author)}${fandom?' ・ '+esc(fandom):''}</div>${seriesUrl?`<div class="actions"><button onclick='window.open(${jsArg(seriesUrl)},"_blank")'>元のシリーズを開く ↗</button></div>`:''}
- <div>${tags.map(t=>`<span class="tag">#${esc(t)}</span>`).join('')}</div>
+ showPage(name,`<section class="hero panel"><div class="tiny">SERIES</div><h1>${esc(name)}</h1><div class="author">${esc(seriesAuthor)}${fandom?' ・ '+esc(fandom):''}</div>${seriesUrl?`<div class="actions"><button onclick='window.open(${jsArg(seriesUrl)},"_blank")'>元のシリーズを開く ↗</button></div>`:''}
+ <div>${tagCloud(tags,'series_'+name+'_'+author)}</div>
  <div class="seriesStats"><div class="seriesStat"><b>${items.length}</b><span class="tiny">登録作品</span></div><div class="seriesStat"><b>${read}</b><span class="tiny">読了</span></div><div class="seriesStat"><b>${clips}</b><span class="tiny">拾った本文</span></div></div>
  ${latest?`<div class="tiny" style="margin-top:10px">最後に触った作品：${esc(latest.title||'タイトル未取得')} ・ ${daysAgo(latest.lastRead||latest.updatedAt)}</div>`:''}</section>
  ${recaps.length?`<section class="detailSection"><h3>シリーズを思い出す</h3>${recaps.map(x=>`<div class="objectCard"><b>${esc(x.title||'タイトル未取得')}</b>${x.recap?`<div style="margin-top:5px">${esc(x.recap)}</div>`:''}${x.episodeSummary?`<div class="tiny" style="margin-top:5px">今回：${esc(x.episodeSummary)}</div>`:''}${x.eventsText?`<div class="tiny" style="margin-top:5px">重要：${esc(x.eventsText)}</div>`:''}</div>`).join('')}</section>`:''}
  <section class="detailSection"><h3>作品一覧</h3><div class="tiny">登録された作品をまとめて確認できます。</div></section>${items.map(compactCard).join('')}`);
 }
+window.toggleClipOrder=id=>{clipOrder=clipOrder==='oldest'?'newest':'oldest';localStorage.setItem(CLIP_ORDER_KEY,clipOrder);rememberDetailScroll();showWork(id);restoreDetailScroll()};
 let savedClipSelection='', pendingRoute=null;
 window.toggleClipActions=clipId=>{const el=document.getElementById('clip_'+clipId);if(el)el.classList.toggle('active')};
 window.toggleClipExpand=clipId=>{
@@ -856,7 +897,7 @@ $('routeConfirm').onclick=()=>{
   const selectedEntity=pendingRoute.directName||$('routeEntity').value;
   const name=(selectedEntity==='__new__'&&field==='relationsText'?relationPairName():selectedEntity==='__new__'?$('routeEntityNew').value:selectedEntity).trim();
   const text=$('routeDirectText').value.trim();
-  if(!name)return showToast(field==='relationsText'?'人物A・Bを選ぶか自由入力してね':'名前を入れてね');if(!text)return showToast('内容を入れてね');
+  if(!name)return showToast(field==='relationsText'?'人物A・Bを選ぶか自由入力してね':'名前を入れてね');
   upsertStructuredNote(b,field,name,$('routeSlot').value,text);b.updatedAt=new Date().toISOString();persist(false);rememberDetailScroll();closeRouteDialog();showWork(b.id);showToast(name+' を追加したよ');return;
  }
  const c=clipById(b,pendingRoute.clipId);if(!c)return closeRouteDialog();
@@ -954,7 +995,7 @@ $('duplicateContinue').onclick=()=>{const b=books.find(x=>x.id===duplicateBookId
 
 $('worksTab').onclick=()=>setHomeMode('works');$('seriesTab').onclick=()=>setHomeMode('series');
 $('pickupBtn').onclick=()=>{const raw=$('quickInput').value.trim();if(pickup(raw))$('quickInput').value=''};
-$('manualBtn').onclick=()=>openEditor();$('backBtn').onclick=showHome;$('addCustomSectionBtn').onclick=()=>{const wrap=document.createElement('div');wrap.className='objectCard customEdit';wrap.innerHTML='<input class="customTitle" placeholder="項目名"><textarea class="customItems" placeholder="1行＝1項目"></textarea><button type="button" class="ghost customRemove">この項目を削除</button>';wrap.querySelector('.customRemove').onclick=()=>wrap.remove();$('customSectionsEditor').appendChild(wrap)};$('closeBtn').onclick=closeEditor;$('cancelBtn').onclick=closeEditor;
+$('manualBtn').onclick=()=>openEditor();$('backBtn').onclick=()=>restoreView(navStack.pop());$('addCustomSectionBtn').onclick=()=>{const wrap=document.createElement('div');wrap.className='objectCard customEdit';wrap.innerHTML='<input class="customTitle" placeholder="項目名"><textarea class="customItems" placeholder="1行＝1項目"></textarea><button type="button" class="ghost customRemove">この項目を削除</button>';wrap.querySelector('.customRemove').onclick=()=>wrap.remove();$('customSectionsEditor').appendChild(wrap)};$('closeBtn').onclick=closeEditor;$('cancelBtn').onclick=closeEditor;
 $('form').addEventListener('submit',e=>{
  e.preventDefault();const obj={};
  ['id','author','fandom','series','seriesUrl','title','url','progress','readingStatus','clip','memo','source','sourceType','sourceId','recap','episodeSummary','questions','charactersText','relationsText','eventsText','favoriteLevel','favoriteParts'].forEach(k=>obj[k]=$(k).value.trim());
@@ -973,7 +1014,7 @@ $('form').addEventListener('submit',e=>{
  }
  persist();closeEditor();
 });
-$('search').oninput=render;document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{activeFilter=b.dataset.filter;render()});
+$('search').oninput=()=>{currentPage=1;render()};document.querySelectorAll('[data-filter]').forEach(b=>b.onclick=()=>{activeFilter=b.dataset.filter;currentPage=1;render()});
 window.editBook=id=>openEditor(books.find(b=>b.id===id));
 window.markRead=id=>{const b=books.find(x=>x.id===id);b.lastRead=new Date().toISOString();b.updatedAt=b.lastRead;b.readingHistory=b.readingHistory||[];b.readingHistory.push({readAt:b.lastRead,action:'mark-read'});persist()};
 const _showWorkBase=showWork;
@@ -1004,7 +1045,7 @@ window.deleteWork=async id=>{
  }
 };
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.14.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.15.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function showIntakeDebug(){
  const el=$('intakeDebug'); if(!el)return;
@@ -1318,7 +1359,7 @@ $('dbConnectStart').onclick = async () => {
     ? '✓ D1と接続しました。\n' + loaded.count + '作品を読み込みました。\n\nショートカットから追加した作品・本文も通常画面に反映されます。'
     : '接続できませんでした。\n' + (loaded.error || 'API_TOKENを確認してください。');
 
-  if (loaded.ok) $('dbConnectToken').value = '';
+  if (loaded.ok) { $('dbConnectToken').value = ''; setTimeout(()=>$('dbConnectDialog').close(),180); }
 };
 
 $('dbReloadBtn').onclick = async () => {
@@ -1333,7 +1374,9 @@ $('dbReloadBtn').onclick = async () => {
   result.textContent = loaded.ok
     ? '✓ D1を再読み込みしました。\n' + loaded.count + '作品。'
     : '再読み込みできませんでした。\n' + (loaded.error || '');
+  if(loaded.ok)setTimeout(()=>$('dbConnectDialog').close(),180);
 };
+$('dbQuickReloadBtn').onclick=async()=>{const btn=$('dbQuickReloadBtn');btn.disabled=true;btn.textContent='↻ 更新中';const loaded=await loadLibraryFromD1();btn.disabled=false;btn.textContent='↻ 更新';if(!loaded.ok&&loaded.reason==='no-token')openDbConnect();};
 
 $('dbDisconnectBtn').onclick = () => {
   localStorage.removeItem(D1_TOKEN_KEY);

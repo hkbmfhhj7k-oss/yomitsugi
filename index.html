@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.16.0 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.16.1 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -56,15 +56,22 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 
 /* v0.15.0 usability pass */
-/* v0.16.0 library & stationery pass */
-.clickTag{--tag-paper:#fbf4e6;--tag-edge:#dfceb2;--tag-ink:#6b5943;position:relative;display:inline-flex!important;align-items:center;background:var(--tag-paper)!important;color:var(--tag-ink)!important;border:1px solid var(--tag-edge)!important;padding:5px 10px 5px 15px!important;border-radius:3px 7px 7px 3px!important;font-size:11px!important;font-weight:700!important;line-height:1.2;box-shadow:0 2px 5px #6b563010,inset 0 1px #fff9;clip-path:polygon(8px 0,100% 0,100% 100%,8px 100%,0 50%)}
-.clickTag:before{content:"";position:absolute;left:6px;top:50%;width:3px;height:3px;margin-top:-2px;border-radius:50%;background:#fff;border:1px solid var(--tag-edge);box-shadow:0 0 0 1px #ffffff66}.clickTag:nth-of-type(4n+2){--tag-paper:#f2edf8;--tag-edge:#d7c9e4;--tag-ink:#675879}.clickTag:nth-of-type(4n+3){--tag-paper:#eef5f1;--tag-edge:#cadbd1;--tag-ink:#526b5d}.clickTag:nth-of-type(4n){--tag-paper:#f8eeee;--tag-edge:#e3cccc;--tag-ink:#765b5b}.tagCloud{max-height:none;overflow:visible;gap:4px}.tagHidden{display:none!important}.tagCloud.expanded .tagHidden{display:inline-flex!important}.tagCloudToggle,.tagMoreBtn{background:#fffaf2!important;color:#76654f!important;border:1px dashed #d9c7ab!important;padding:5px 9px!important;border-radius:9px!important;font-size:11px!important}.cardTags{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:4px}.tagFilterBar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}.pager{display:flex;justify-content:center;gap:6px;align-items:center;flex-wrap:wrap;margin:16px 0 6px}.pager button{min-width:38px;padding:8px 10px}.pager .active{background:var(--accent);color:#fff}.refreshBtn{padding:9px 11px!important}.shelfSummary{font-size:11px;color:var(--muted);white-space:nowrap}
-.shelf{position:relative;height:92px;gap:4px;padding:13px 10px 3px;border-bottom:7px solid #aa8c6d;box-shadow:inset 0 -2px #d7c0a5;cursor:pointer;background:linear-gradient(180deg,#fffaf800,#f1e8dc55)}
-.spine{position:relative;overflow:hidden;border-radius:4px 4px 1px 1px;border:1px solid #cfc3d8;background:linear-gradient(90deg,#ded5e8 0 18%,#f0eaf5 20% 78%,#cfc2dc 80%);box-shadow:inset 2px 0 #ffffff55,inset -2px 0 #5d49650b,0 2px 3px #4c382318;transform-origin:bottom center}.spine:before,.spine:after{content:"";position:absolute;left:1px;right:1px;height:2px;border-top:1px solid #ffffff99;border-bottom:1px solid #8f7d9c55}.spine:before{top:7px}.spine:after{bottom:7px}.spine:nth-child(5n+2){background:linear-gradient(90deg,#d8e4dc,#eff5f0,#c6d8cd)}.spine:nth-child(5n+3){background:linear-gradient(90deg,#ead9d5,#f7ece8,#d9c2bd)}.spine:nth-child(5n+4){background:linear-gradient(90deg,#e8dfc9,#f7f0df,#d8c9a8)}.spine:nth-child(5n){background:linear-gradient(90deg,#d6e0e9,#edf3f7,#c3d0dc)}
-.spine.deluxe{border:2px double #9b7c4e;background:linear-gradient(90deg,#6f5d83 0 14%,#9a87ad 16% 84%,#5d4a72 86%);box-shadow:inset 0 0 0 2px #e9d9a833,0 3px 6px #0002}.spine.deluxe:before,.spine.deluxe:after{height:4px;border-top:1px solid #e8d5a5;border-bottom:1px solid #b59456}.spine.royal{border:2px double #80602d;background:linear-gradient(90deg,#603a42 0 12%,#8f5960 14% 86%,#4d2b34 88%);box-shadow:inset 0 0 0 2px #f0d69066,0 3px 8px #0003}.spine.royal:before,.spine.royal:after{height:5px;border-top:2px double #f0d690;border-bottom:1px solid #a77d32}.spineMark{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:7px;height:7px;border:1px solid #9a7b49;border-radius:50%;box-shadow:0 0 0 2px #fff2}.spine.deluxe .spineMark{width:9px;height:13px;border-radius:50% 50% 45% 45%;border-color:#e2c87e}.spine.royal .spineMark{width:11px;height:17px;border:2px double #f0d690;border-radius:2px 2px 7px 7px}.shelfHint{text-align:right;font-size:10px;color:var(--muted);margin-top:4px}.monthNav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.monthNav button{padding:8px 10px}.ledgerSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 16px}.ledgerStat{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}.ledgerStat b{display:block;font-size:18px}.ledgerDay{margin-top:14px}.ledgerDate{font-family:Georgia,serif;font-weight:700;color:#685b4d;border-bottom:1px solid var(--line);padding-bottom:5px}.ledgerRow{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:start;padding:9px 2px;border-bottom:1px dashed var(--line);font-size:13px}.ledgerTime{font-size:11px;color:var(--muted)}.ledgerAction{font-size:10px;color:var(--muted);white-space:nowrap}.clipSort{margin-left:auto}.filterLink{background:none!important;color:var(--accent)!important;padding:0!important;font-weight:700}.hero [data-section="title"]{clear:both;margin-top:10px}.hero [data-section="tags"]{margin-top:8px}@media(max-width:540px){.ledgerSummary{grid-template-columns:1fr 1fr 1fr}.ledgerRow{grid-template-columns:48px 1fr}.ledgerAction{grid-column:2}}
+/* v0.16.1 library & stationery pass */
+.clickTag{--tag-paper:#fbf4e6;--tag-edge:#dfceb2;--tag-ink:#6b5943;position:relative;display:inline-flex!important;align-items:center;background:var(--tag-paper)!important;color:var(--tag-ink)!important;border:1px solid var(--tag-edge)!important;padding:5px 10px 5px 15px!important;border-radius:3px 7px 7px 3px!important;font-size:11px!important;font-weight:700!important;line-height:1.2;box-shadow:0 2px 5px #6b563010,inset 0 1px #fff9;clip-path:polygon(8px 0,100% 0,100% 100%,8px 100%,0 50%);filter:drop-shadow(-.7px 0 0 var(--tag-edge)) drop-shadow(0 -.55px 0 var(--tag-edge)) drop-shadow(0 .55px 0 var(--tag-edge))}
+.clickTag:before{content:"";position:absolute;left:6px;top:50%;width:3px;height:3px;margin-top:-2px;border-radius:50%;background:#fff;border:1px solid var(--tag-edge);box-shadow:0 0 0 1px #ffffff66}.clickTag:nth-of-type(4n+2){--tag-paper:#f2edf8;--tag-edge:#d7c9e4;--tag-ink:#675879}.clickTag:nth-of-type(4n+3){--tag-paper:#eef5f1;--tag-edge:#cadbd1;--tag-ink:#526b5d}.clickTag:nth-of-type(4n){--tag-paper:#f8eeee;--tag-edge:#e3cccc;--tag-ink:#765b5b}.tagCloud{max-height:none;overflow:visible;gap:4px}.tagHidden{display:none!important}.tagCloud.expanded .tagHidden{display:inline-flex!important}.tagCloudToggle,.tagMoreBtn{background:#fffaf2!important;color:#76654f!important;border:1px dashed #d9c7ab!important;padding:5px 9px!important;border-radius:9px!important;font-size:11px!important}.cardTags{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:4px}.tagFilterBar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}.brandRow{align-items:center}.pageReload{width:36px;height:36px;padding:0!important;border-radius:999px!important;background:transparent!important;color:var(--accent)!important;border:1px solid var(--line)!important;font-size:20px!important;font-weight:500!important;line-height:1}.pager{display:flex;justify-content:center;gap:6px;align-items:center;flex-wrap:wrap;margin:16px 0 6px}.pager button{min-width:38px;padding:8px 10px}.pager .active{background:var(--accent);color:#fff}.refreshBtn{padding:9px 11px!important}.shelfSummary{font-size:11px;color:var(--muted);white-space:nowrap}
+/* v0.16.1: 小さな古書棚。布・紙装丁＋MIT licensed Tabler SVG ornament */
+.shelf{position:relative;height:98px;gap:4px;padding:14px 10px 3px;border-bottom:7px solid #aa8c6d;box-shadow:inset 0 -2px #d7c0a5;cursor:pointer;background:linear-gradient(180deg,#fffaf800,#f1e8dc55)}
+.spine{--cloth1:#d8cee2;--cloth2:#eee8f2;--cloth3:#c5b8d0;--foil:#a18457;position:relative;overflow:hidden;border-radius:4px 4px 1px 1px;border:1px solid color-mix(in srgb,var(--cloth3) 75%,#756b63);background:repeating-linear-gradient(90deg,#fff1 0 1px,transparent 1px 3px),linear-gradient(90deg,var(--cloth3),var(--cloth2) 20% 80%,var(--cloth1));box-shadow:inset 2px 0 #ffffff55,inset -2px 0 #4c382315,0 2px 3px #4c38231b;transform-origin:bottom center;color:var(--foil)}
+.spine:before,.spine:after{content:"";position:absolute;left:2px;right:2px;height:3px;border-top:1px solid currentColor;border-bottom:1px solid color-mix(in srgb,currentColor 55%,transparent);opacity:.72}.spine:before{top:7px}.spine:after{bottom:7px}
+.spine.p1{--cloth1:#c8d9cf;--cloth2:#edf3ef;--cloth3:#b3cbbb;--foil:#92743f}.spine.p2{--cloth1:#e2cfc9;--cloth2:#f5e9e5;--cloth3:#d2b9b1;--foil:#9b7650}.spine.p3{--cloth1:#ded4b9;--cloth2:#f5eedb;--cloth3:#cfc09a;--foil:#8f7041}.spine.p4{--cloth1:#cbd8e2;--cloth2:#eaf1f5;--cloth3:#b6c7d5;--foil:#776b75}.spine.p5{--cloth1:#d9cbdc;--cloth2:#f1e8f2;--cloth3:#c7b5ca;--foil:#8b6c75}
+.spine.deluxe{--cloth1:#69495b;--cloth2:#8b6175;--cloth3:#523747;--foil:#d7b96e;border:2px double #9b7c4e;box-shadow:inset 0 0 0 2px #e9d9a829,0 3px 6px #0002}.spine.deluxe.p1{--cloth1:#315d56;--cloth2:#47766d;--cloth3:#284b46;--foil:#d7bd79}.spine.deluxe.p2{--cloth1:#334e70;--cloth2:#496b94;--cloth3:#273d59;--foil:#d7c384}.spine.deluxe.p3{--cloth1:#76582f;--cloth2:#9a7744;--cloth3:#5f4524;--foil:#ead49a}
+.spine.grand{--cloth1:#3e6558;--cloth2:#5f8778;--cloth3:#304e45;--foil:#e2c981;border:2px double #9f7f45;box-shadow:inset 0 0 0 2px #f0dc9d33,0 3px 7px #0002}.spine.grand.p1{--cloth1:#594575;--cloth2:#756096;--cloth3:#45365c;--foil:#dfc77d}.spine.grand.p2{--cloth1:#6f3e4b;--cloth2:#925665;--cloth3:#542f39;--foil:#e5c77d}
+.spine.royal{--cloth1:#5c3540;--cloth2:#824b58;--cloth3:#432630;--foil:#efd58a;border:3px double #8d6a31;box-shadow:inset 0 0 0 2px #f0d69066,inset 0 0 14px #24101633,0 3px 8px #0003}.spine.royal.p1{--cloth1:#263f63;--cloth2:#385b88;--cloth3:#1c304c;--foil:#ecd98f}.spine.royal.p2{--cloth1:#e5d8b8;--cloth2:#f4ead1;--cloth3:#cbb98f;--foil:#8f6b2e}
+.spineOrnament{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:58%;height:auto;color:currentColor;opacity:.88;filter:drop-shadow(0 1px #fff3)}.spine.normal .spineOrnament{width:62%;opacity:.66}.spine.deluxe .spineOrnament{width:65%}.spine.grand .spineOrnament{width:68%}.spine.royal .spineOrnament{width:72%}.spineCount{position:absolute;left:50%;bottom:17px;transform:translateX(-50%);font:700 8px/1 Georgia,serif;color:currentColor;text-shadow:0 1px #0002}.spine.royal .spineCount{font-size:9px;bottom:18px}
+.shelfHint{text-align:right;font-size:10px;color:var(--muted);margin-top:4px}.monthNav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.monthNav button{padding:8px 10px}.ledgerSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 16px}.ledgerStat{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}.ledgerStat b{display:block;font-size:18px}.ledgerDay{margin-top:14px}.ledgerDate{font-family:Georgia,serif;font-weight:700;color:#685b4d;border-bottom:1px solid var(--line);padding-bottom:5px}.ledgerRow{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:start;padding:9px 2px;border-bottom:1px dashed var(--line);font-size:13px}.ledgerTime{font-size:11px;color:var(--muted)}.ledgerAction{font-size:10px;color:var(--muted);white-space:nowrap}.clipSort{margin-left:auto}.filterLink{background:none!important;color:var(--accent)!important;padding:0!important;font-weight:700}.hero [data-section="title"]{clear:both;margin-top:10px}.hero [data-section="tags"]{margin-top:8px}@media(max-width:540px){.ledgerSummary{grid-template-columns:1fr 1fr 1fr}.ledgerRow{grid-template-columns:48px 1fr}.ledgerAction{grid-column:2}}
 </style>
 </head><body><main>
- <div class="brand">Yomitsugi <span class="tiny">v0.16.0</span></div>
+ <div class="row brandRow"><div class="brand grow">Yomitsugi <span class="tiny">v0.16.1</span></div><button type="button" class="pageReload" id="dbQuickReloadBtn" aria-label="ページを再読み込み" title="ページを再読み込み">↻</button></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 <div id="intakeDebug" class="notice hidden" style="white-space:pre-wrap;word-break:break-all"></div>
 
@@ -105,7 +112,6 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
   <button class="secondary" id="exportBtn">書き出す</button>
   <button class="secondary" id="dbCopyBtn">D1へコピー</button>
   <button class="secondary" id="dbConnectBtn">D1接続</button>
-  <button class="secondary refreshBtn" id="dbQuickReloadBtn" title="D1から最新データを読み込む">↻ 更新</button>
   <span class="tiny" id="dbStatus">端末データ</span>
   <label style="margin:0"><span class="buttonlike secondary">読み込む</span><input id="importFile" type="file" accept="application/json" class="hidden"></label>
  </div>
@@ -505,7 +511,8 @@ function rememberDetailScroll(){detailScrollRestore=window.scrollY}
 function restoreDetailScroll(){if(detailScrollRestore===null)return;const y=detailScrollRestore;detailScrollRestore=null;requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo({top:y,behavior:'instant'})))}
 function showToast(msg){$('toast').textContent=msg;$('toast').classList.remove('hidden');clearTimeout(showToast.t);showToast.t=setTimeout(()=>$('toast').classList.add('hidden'),2200)}
 function monthKey(d=new Date()){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
-function workHistoryInMonth(b,ym){return (Array.isArray(b.readingHistory)?b.readingHistory:[]).filter(h=>String(h.readAt||'').slice(0,7)===ym)}
+function isVisibleReadingEvent(h){const a=String(h?.action||'').toLowerCase();return !a.includes('selected-text')&&!a.includes('shortcut-selected-text')}
+function workHistoryInMonth(b,ym){return (Array.isArray(b.readingHistory)?b.readingHistory:[]).filter(h=>isVisibleReadingEvent(h)&&String(h.readAt||'').slice(0,7)===ym)}
 function worksReadInMonth(ym){
  const byHistory=books.filter(b=>workHistoryInMonth(b,ym).length);
  // 古いデータで履歴が無い作品だけ、登録月を補助線として使う。
@@ -515,17 +522,33 @@ function worksReadInMonth(ym){
 function shelfUnits(items){
  let cursor=0,n=items.length,units=[];
  while(n>=100){units.push({kind:'royal',count:100,items:items.slice(cursor,cursor+100)});cursor+=100;n-=100}
+ while(n>=50){units.push({kind:'grand',count:50,items:items.slice(cursor,cursor+50)});cursor+=50;n-=50}
  while(n>=10){units.push({kind:'deluxe',count:10,items:items.slice(cursor,cursor+10)});cursor+=10;n-=10}
  while(n>0){units.push({kind:'normal',count:1,items:items.slice(cursor,cursor+1)});cursor++;n--}
  return units;
 }
+// Ornament SVG paths: Tabler Icons (MIT License), embedded locally and recolored with currentColor.
+function spineOrnament(kind,index){
+ const icons=[
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21c.5-4.5 2.5-8 7-10"/><path d="M9 18c6.218 0 10.5-3.288 11-12V4h-4.014C6.986 4 4 8 4 13c0 1 0 3 2 5h3"/></svg>',
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6l4 6 5-4-2 10H5L3 8l5 4 4-6"/></svg>',
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a7.5 7.5 0 0 0 8.313 12.446A9 9 0 1 1 12 3"/><path d="M17 4a2 2 0 0 0 2 2 2 2 0 0 0-2 2 2 2 0 0 0-2-2 2 2 0 0 0 2-2"/><path d="M19 11h2m-1-1v2"/></svg>',
+  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2a3 3 0 0 1 3 3c0 .56-.26 1.44-.78 2.64L13.5 9l1.76-1.89c.5-.6.92-1 1.27-1.21A2.97 2.97 0 0 1 20.6 7a3.01 3.01 0 0 1-1.09 4.1c-.37.22-.99.4-1.85.54L15 12l2.4.33c1 .14 1.7.33 2.11.57A3.01 3.01 0 0 1 20.6 17a2.97 2.97 0 0 1-4.07 1.1c-.35-.2-.77-.6-1.27-1.2L13.5 15l.72 1.36c.52 1.2.78 2.08.78 2.64a3 3 0 0 1-6 0c0-.56.26-1.44.78-2.64L10.5 15l-1.76 1.89c-.5.6-.92 1-1.27 1.21A2.97 2.97 0 0 1 3.4 17a3.01 3.01 0 0 1 1.09-4.1c.37-.22.99-.4 1.85-.54L9 12l-2.4-.33c-1-.14-1.7-.33-2.11-.57A3.01 3.01 0 0 1 3.4 7a2.97 2.97 0 0 1 4.07-1.1c.35.2.77.6 1.27 1.2L10.5 9C9.5 6.71 9 5.38 9 5a3 3 0 0 1 3-3"/></svg>'
+ ];
+ return `<span class="spineOrnament">${icons[(index+(kind==='royal'?1:kind==='grand'?3:0))%icons.length]}</span>`;
+}
+function spineHTML(u,i,ledger=false){
+ const seed=(i+1)*2654435761>>>0,kind=u.kind||'normal';
+ const height=kind==='royal'?76:kind==='grand'?72:kind==='deluxe'?67:40+(seed%30);
+ const width=kind==='royal'?31:kind==='grand'?27:kind==='deluxe'?23:11+((seed>>>7)%7);
+ const tilt=kind==='normal'?((seed%7)-3)*.5:((seed%3)-1)*.25;
+ const pattern='p'+(seed%6);
+ return `<span class="spine ${kind} ${pattern}" title="${u.count}作品分" style="height:${height}px;width:${width}px;flex:0 0 ${width}px;transform:rotate(${tilt}deg)">${spineOrnament(kind,i)}${kind!=='normal'?`<span class="spineCount">${u.count}</span>`:''}</span>`;
+}
 function renderShelf(){
  const ym=monthKey(),monthly=worksReadInMonth(ym),units=shelfUnits(monthly);
  $('bookCount').innerHTML=`<span class="shelfSummary">今月 ${monthly.length}作品 ・ 累計 ${books.length}作品</span>`;
- $('shelf').innerHTML=units.map((u,i)=>{
-  const seed=(i+1)*2654435761>>>0,height=u.kind==='royal'?72:u.kind==='deluxe'?66:38+(seed%29),width=u.kind==='royal'?28:u.kind==='deluxe'?22:11+((seed>>>7)%7),tilt=u.kind==='normal'?((seed%5)-2)*.45:0;
-  return `<span class="spine ${u.kind==='normal'?'':u.kind}" title="${u.count}作品分" style="height:${height}px;width:${width}px;flex:0 0 ${width}px;transform:rotate(${tilt}deg)"><span class="spineMark"></span></span>`;
- }).join('');
+ $('shelf').innerHTML=units.map((u,i)=>spineHTML(u,i)).join('');
 }
 function monthLabel(ym){const [y,m]=ym.split('-');return `${y}年${Number(m)}月`}
 function shiftMonth(ym,delta){const [y,m]=ym.split('-').map(Number),d=new Date(y,m-1+delta,1);return monthKey(d)}
@@ -542,7 +565,7 @@ function showReadingLedger(ym=monthKey()){
  const events=historyEventsForMonth(ym),works=worksReadInMonth(ym),clips=books.reduce((n,b)=>n+(b.textClips||[]).filter(c=>String(c.capturedAt||'').slice(0,7)===ym).length,0);
  const groups=new Map();events.forEach(e=>{const day=String(e.at||'').slice(0,10)||ym;if(!groups.has(day))groups.set(day,[]);groups.get(day).push(e)});
  const body=[...groups.entries()].map(([day,rows])=>`<div class="ledgerDay"><div class="ledgerDate">${new Date(day+'T00:00:00').toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'})}</div>${rows.map(e=>`<div class="ledgerRow"><div class="ledgerTime">${e.at?new Date(e.at).toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''}</div><button class="linkish" onclick="showWork('${e.book.id}')">${esc(e.book.title||'タイトル未取得')}</button><div class="ledgerAction">${esc(e.action)}</div></div>`).join('')}</div>`).join('');
- showPage('読書記録',`<section class="hero panel"><div class="monthNav"><button class="secondary" onclick="showReadingLedger('${shiftMonth(ym,-1)}')">‹</button><div><div class="tiny">READING LEDGER</div><h1 style="margin:2px 0">${monthLabel(ym)}</h1></div><button class="secondary" onclick="showReadingLedger('${shiftMonth(ym,1)}')">›</button></div><div class="ledgerSummary"><div class="ledgerStat"><b>${works.length}</b><span class="tiny">読んだ作品</span></div><div class="ledgerStat"><b>${events.length}</b><span class="tiny">読書記録</span></div><div class="ledgerStat"><b>${clips}</b><span class="tiny">拾った本文</span></div></div><div class="shelf" style="cursor:default">${shelfUnits(works).map((u,i)=>{const seed=(i+1)*2654435761>>>0,h=u.kind==='royal'?72:u.kind==='deluxe'?66:38+(seed%29),w=u.kind==='royal'?28:u.kind==='deluxe'?22:11+((seed>>>7)%7);return `<span class="spine ${u.kind==='normal'?'':u.kind}" title="${u.count}作品分" style="height:${h}px;width:${w}px;flex:0 0 ${w}px"><span class="spineMark"></span></span>`}).join('')}</div></section><section class="detailSection"><h3>この月の読書履歴</h3>${body||'<div class="empty">この月の読書履歴はまだありません。</div>'}</section>`);
+ showPage('読書記録',`<section class="hero panel"><div class="monthNav"><button class="secondary" onclick="showReadingLedger('${shiftMonth(ym,-1)}')">‹</button><div><div class="tiny">READING LEDGER</div><h1 style="margin:2px 0">${monthLabel(ym)}</h1></div><button class="secondary" onclick="showReadingLedger('${shiftMonth(ym,1)}')">›</button></div><div class="ledgerSummary"><div class="ledgerStat"><b>${works.length}</b><span class="tiny">読んだ作品</span></div><div class="ledgerStat"><b>${events.length}</b><span class="tiny">読書記録</span></div><div class="ledgerStat"><b>${clips}</b><span class="tiny">拾った本文</span></div></div><div class="shelf" style="cursor:default">${shelfUnits(works).map((u,i)=>spineHTML(u,i,true)).join('')}</div></section><section class="detailSection"><h3>この月の読書履歴</h3>${body||'<div class="empty">この月の読書履歴はまだありません。</div>'}</section>`);
 }
 window.showReadingLedger=showReadingLedger;
 function compactCard(b){
@@ -849,7 +872,7 @@ window.showWork=id=>{
   <section class="detailSection" data-section="memo"><div class="inlineHead"><h3>メモ・感想</h3><button class="miniEdit" onclick="editField('${b.id}','memo','メモ・感想')">✎</button></div><div>${b.memo?esc(b.memo):'<span class="tiny">まだありません</span>'}</div></section>
   ${custom}
   <section class="detailSection"><button class="secondary" onclick="addCustomSectionInline('${b.id}')">＋ セクションを追加</button></section>
-  <section class="detailSection"><h3>読書履歴</h3>${(b.readingHistory||[]).length?(b.readingHistory||[]).slice().reverse().map(h=>`<div class="objectCard">${new Date(h.readAt).toLocaleString('ja-JP')} ・ ${esc(h.action||'読書')}</div>`).join(''):'<div class="tiny">まだ履歴はありません</div>'}</section>
+  <section class="detailSection"><h3>読書履歴</h3>${(b.readingHistory||[]).filter(isVisibleReadingEvent).length?(b.readingHistory||[]).filter(isVisibleReadingEvent).slice().reverse().map(h=>`<div class="objectCard">${new Date(h.readAt).toLocaleString('ja-JP')} ・ ${esc(h.action||'読書')}</div>`).join(''):'<div class="tiny">まだ履歴はありません</div>'}</section>
   <section class="detailSection dangerZone"><h3>作品の削除</h3><div class="tiny">この作品だけをYomitsugiから削除します。シリーズ内のほかの作品は残ります。</div><div class="actions"><button class="dangerBtn" onclick="deleteWork('${b.id}')">この作品を削除</button></div></section>
  `);
 }
@@ -1082,7 +1105,7 @@ window.deleteWork=async id=>{
  }
 };
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.16.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.16.1.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function showIntakeDebug(){
  const el=$('intakeDebug'); if(!el)return;
@@ -1413,7 +1436,7 @@ $('dbReloadBtn').onclick = async () => {
     : '再読み込みできませんでした。\n' + (loaded.error || '');
   if(loaded.ok)setTimeout(()=>$('dbConnectDialog').close(),180);
 };
-$('dbQuickReloadBtn').onclick=async()=>{const btn=$('dbQuickReloadBtn');btn.disabled=true;btn.textContent='↻ 更新中';const loaded=await loadLibraryFromD1();btn.disabled=false;btn.textContent='↻ 更新';if(!loaded.ok&&loaded.reason==='no-token')openDbConnect();};
+$('dbQuickReloadBtn').onclick=()=>location.reload();
 
 $('dbDisconnectBtn').onclick = () => {
   localStorage.removeItem(D1_TOKEN_KEY);

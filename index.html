@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Yomitsugi v0.17.0 — Web小説のつづきを忘れない</title>
+<title>Yomitsugi v0.18.0 — Web小説のつづきを忘れない</title>
 <link rel="manifest" href="./manifest.webmanifest">
 <style>
 :root{--bg:#f7f4ef;--card:#fff;--ink:#292724;--muted:#7d766e;--line:#e8e0d7;--accent:#75678f;--soft:#eee9f5;--warn:#fff8dc;--ok:#eef7ee}
@@ -56,10 +56,10 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .groupSlotBlock{padding-top:4px}.groupSlotBlock+.groupSlotBlock{margin-top:10px}.groupSlotBlock>.groupSlot{margin-bottom:2px}.groupSlotBlock .groupEntry{padding-top:4px}
 
 /* v0.15.0 usability pass */
-/* v0.17.0 library & stationery pass */
+/* v0.18.0 library & stationery pass */
 .clickTag{--tag-paper:#fbf4e6;--tag-edge:#dfceb2;--tag-ink:#6b5943;position:relative;display:inline-flex!important;align-items:center;background:var(--tag-paper)!important;color:var(--tag-ink)!important;border:1px solid var(--tag-edge)!important;padding:5px 10px 5px 15px!important;border-radius:3px 7px 7px 3px!important;font-size:11px!important;font-weight:700!important;line-height:1.2;box-shadow:0 2px 5px #6b563010,inset 0 1px #fff9;clip-path:polygon(8px 0,100% 0,100% 100%,8px 100%,0 50%);filter:drop-shadow(-.7px 0 0 var(--tag-edge)) drop-shadow(0 -.55px 0 var(--tag-edge)) drop-shadow(0 .55px 0 var(--tag-edge))}
 .clickTag:before{content:"";position:absolute;left:6px;top:50%;width:3px;height:3px;margin-top:-2px;border-radius:50%;background:#fff;border:1px solid var(--tag-edge);box-shadow:0 0 0 1px #ffffff66}.clickTag:nth-of-type(4n+2){--tag-paper:#f2edf8;--tag-edge:#d7c9e4;--tag-ink:#675879}.clickTag:nth-of-type(4n+3){--tag-paper:#eef5f1;--tag-edge:#cadbd1;--tag-ink:#526b5d}.clickTag:nth-of-type(4n){--tag-paper:#f8eeee;--tag-edge:#e3cccc;--tag-ink:#765b5b}.tagCloud{max-height:none;overflow:visible;gap:4px}.tagHidden{display:none!important}.tagCloud.expanded .tagHidden{display:inline-flex!important}.tagCloudToggle,.tagMoreBtn{background:#fffaf2!important;color:#76654f!important;border:1px dashed #d9c7ab!important;padding:5px 9px!important;border-radius:9px!important;font-size:11px!important}.cardTags{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:4px}.tagFilterBar{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}.brandRow{align-items:center}.pageReload{width:36px;height:36px;padding:0!important;border-radius:999px!important;background:transparent!important;color:var(--accent)!important;border:1px solid var(--line)!important;font-size:20px!important;font-weight:500!important;line-height:1}.pager{display:flex;justify-content:center;gap:6px;align-items:center;flex-wrap:wrap;margin:16px 0 6px}.pager button{min-width:38px;padding:8px 10px}.pager .active{background:var(--accent);color:#fff}.refreshBtn{padding:9px 11px!important}.shelfSummary{font-size:11px;color:var(--muted);white-space:nowrap}
-/* v0.17.0: 小さな古書棚。布・紙装丁＋MIT licensed Tabler SVG ornament */
+/* v0.18.0: 小さな古書棚。布・紙装丁＋MIT licensed Tabler SVG ornament */
 .shelf{position:relative;height:98px;gap:4px;padding:14px 10px 3px;border-bottom:7px solid #aa8c6d;box-shadow:inset 0 -2px #d7c0a5;cursor:pointer;background:linear-gradient(180deg,#fffaf800,#f1e8dc55)}
 .spine{--cloth1:#d8cee2;--cloth2:#eee8f2;--cloth3:#c5b8d0;--foil:#a18457;position:relative;overflow:hidden;border-radius:4px 4px 1px 1px;border:1px solid color-mix(in srgb,var(--cloth3) 75%,#756b63);background:repeating-linear-gradient(90deg,#fff1 0 1px,transparent 1px 3px),linear-gradient(90deg,var(--cloth3),var(--cloth2) 20% 80%,var(--cloth1));box-shadow:inset 2px 0 #ffffff55,inset -2px 0 #4c382315,0 2px 3px #4c38231b;transform-origin:bottom center;color:var(--foil)}
 .spine:before,.spine:after{content:"";position:absolute;left:2px;right:2px;height:3px;border-top:1px solid currentColor;border-bottom:1px solid color-mix(in srgb,currentColor 55%,transparent);opacity:.72}.spine:before{top:7px}.spine:after{bottom:7px}
@@ -69,9 +69,34 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
 .spine.royal{--cloth1:#5c3540;--cloth2:#824b58;--cloth3:#432630;--foil:#efd58a;border:3px double #8d6a31;box-shadow:inset 0 0 0 2px #f0d69066,inset 0 0 14px #24101633,0 3px 8px #0003}.spine.royal.p1{--cloth1:#263f63;--cloth2:#385b88;--cloth3:#1c304c;--foil:#ecd98f}.spine.royal.p2{--cloth1:#e5d8b8;--cloth2:#f4ead1;--cloth3:#cbb98f;--foil:#8f6b2e}
 .spineOrnament{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:58%;height:auto;color:currentColor;opacity:.88;filter:drop-shadow(0 1px #fff3)}.spine.normal .spineOrnament{width:62%;opacity:.66}.spine.deluxe .spineOrnament{width:65%}.spine.grand .spineOrnament{width:68%}.spine.royal .spineOrnament{width:72%}.spineCount{position:absolute;left:50%;bottom:17px;transform:translateX(-50%);font:700 8px/1 Georgia,serif;color:currentColor;text-shadow:0 1px #0002}.spine.royal .spineCount{font-size:9px;bottom:18px}
 .shelfHint{text-align:right;font-size:10px;color:var(--muted);margin-top:4px}.monthNav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.monthNav button{padding:8px 10px}.ledgerSummary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0 16px}.ledgerStat{background:var(--bg);border:1px solid var(--line);border-radius:14px;padding:10px;text-align:center}.ledgerStat b{display:block;font-size:18px}.ledgerDay{margin-top:14px}.ledgerDate{font-family:Georgia,serif;font-weight:700;color:#685b4d;border-bottom:1px solid var(--line);padding-bottom:5px}.ledgerRow{display:grid;grid-template-columns:56px 1fr auto;gap:8px;align-items:start;padding:9px 2px;border-bottom:1px dashed var(--line);font-size:13px}.ledgerTime{font-size:11px;color:var(--muted)}.ledgerAction{font-size:10px;color:var(--muted);white-space:nowrap}.clipSort{margin-left:auto}.filterLink{background:none!important;color:var(--accent)!important;padding:0!important;font-weight:700}.hero [data-section="title"]{clear:both;margin-top:10px}.hero [data-section="tags"]{margin-top:8px}@media(max-width:540px){.ledgerSummary{grid-template-columns:1fr 1fr 1fr}.ledgerRow{grid-template-columns:48px 1fr}.ledgerAction{grid-column:2}}
+
+/* v0.18.0 UI / reliability pass */
+.brandRow{position:sticky;top:0;z-index:12;background:color-mix(in srgb,var(--bg) 96%,transparent);padding:8px 0 7px;backdrop-filter:blur(8px)}
+.pageReload.syncing{animation:yomiSpin .85s linear infinite;pointer-events:none;opacity:.65}
+@keyframes yomiSpin{to{transform:rotate(360deg)}}
+#search{padding-left:40px;background:
+ linear-gradient(90deg,transparent 0 38px,#fff 38px),
+ #fff}
+.searchPanel{position:relative}
+.searchPanel:before{content:"⌕";position:absolute;left:29px;top:25px;z-index:1;font:22px/1 Georgia,serif;color:#8b7b69;pointer-events:none}
+#worksHome>.topActions{margin-top:18px}
+#worksHome>.topActions label{margin-top:0}
+.shelf{gap:1px!important;padding-left:7px!important;padding-right:7px!important}
+.spine{margin-right:-.35px}
+.spine.normal:nth-child(5n+1){background:
+ linear-gradient(180deg,transparent 0 28%,currentColor 28% 29%,transparent 29% 70%,currentColor 70% 71%,transparent 71%),
+ repeating-linear-gradient(90deg,#fff1 0 1px,transparent 1px 3px),
+ linear-gradient(90deg,var(--cloth3),var(--cloth2) 20% 80%,var(--cloth1))}
+.spine.normal:nth-child(5n+2):after{height:10px;bottom:12px;border:1px solid currentColor;border-left:0;border-right:0;opacity:.55}
+.spine.normal:nth-child(5n+3):before{top:10px;height:12px;border-top:3px double currentColor;border-bottom:3px double currentColor;opacity:.62}
+.spine.deluxe:before,.spine.grand:before,.spine.royal:before{height:14px;top:8px;border-top:3px double currentColor;border-bottom:1px solid currentColor}
+.spine.deluxe:after,.spine.grand:after,.spine.royal:after{height:11px;bottom:8px;border-top:1px solid currentColor;border-bottom:3px double currentColor}
+.cardSeries{display:block;margin:0 0 4px;font-size:11px;letter-spacing:.01em}
+.cardSeries+.row{margin-top:1px}
+
 </style>
 </head><body><main>
- <div class="row brandRow"><div class="brand grow">Yomitsugi <span class="tiny">v0.17.0</span></div><button type="button" class="pageReload" id="dbQuickReloadBtn" aria-label="ページを再読み込み" title="ページを再読み込み">↻</button></div>
+ <div class="row brandRow"><div class="brand grow">Yomitsugi <span class="tiny">v0.18.0</span></div><button type="button" class="pageReload" id="dbQuickReloadBtn" aria-label="ページを再読み込み" title="ページを再読み込み">↻</button></div>
 <div class="sub">読むことが本体。記録は、できるだけ後ろから拾う。</div>
 <div id="intakeDebug" class="notice hidden" style="white-space:pre-wrap;word-break:break-all"></div>
 
@@ -90,7 +115,7 @@ dialog{border:0;border-radius:22px;max-width:640px;width:calc(100% - 24px);paddi
  <div class="shelf" id="shelf" role="button" tabindex="0" aria-label="月別の読書記録を開く"></div><div class="shelfHint">棚をタップすると月別の読書記録が開きます</div>
 </section>
 
-<section class="panel">
+<section class="panel searchPanel">
  <input id="search" placeholder="タイトル・作者・シリーズ・原作・タグ・メモをまとめて検索">
  <div class="topActions">
   <button class="secondary" data-filter="all">すべて</button>
@@ -570,12 +595,12 @@ function showReadingLedger(ym=monthKey()){
 window.showReadingLedger=showReadingLedger;
 function compactCard(b){
  return `<article class="book compact">
+  ${b.series?`<button class="linkish cardSeries" onclick='showSeriesByName(${jsArg(b.series)},${jsArg(b.author||'')})'>${esc(b.series)} ＞</button>`:''}
   <div class="row">
    <button class="linkish grow" onclick="showWork('${b.id}')"><span class="title">${esc(b.title||'タイトル未取得')}</span></button>
    <span class="pill">${esc(b.readingStatus)}</span>
   </div>
   <div class="meta">${b.author?`<button class="filterLink" onclick='filterByText(${jsArg(b.author)})'>${esc(b.author)}</button>`:'作者未取得'}${b.fandom?` ・ <button class="filterLink" onclick='filterByText(${jsArg(b.fandom)})'>${esc(b.fandom)}</button>`:''}</div>
-  ${b.series?`<button class="linkish tiny" onclick='showSeriesByName(${jsArg(b.series)},${jsArg(b.author||'')})'>${esc(b.series)} ＞</button>`:''}
   <div class="cardTags" id="cardTags_${b.id}">${tagArray(b.tags).map((t,i)=>`<button type="button" class="clickTag${i>=3?' tagHidden':''}" onclick='filterByTag(${jsArg(t)})'>#${esc(t)}</button>`).join('')}${tagArray(b.tags).length>3?`<button type="button" class="tagMoreBtn" onclick="toggleCardTags('${b.id}',this)">＋${tagArray(b.tags).length-3}</button>`:''}</div>
   <div class="tiny" style="margin-top:6px">${b.progress?'前回：'+esc(b.progress)+' ・ ':''}${b.lastRead?'最終読書 '+daysAgo(b.lastRead):'保存 '+daysAgo(b.capturedAt)}</div>
   <div class="actions">
@@ -605,6 +630,8 @@ $('shelf').onclick=()=>showReadingLedger(monthKey());
 $('shelf').onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();showReadingLedger(monthKey())}};
 
 window.goPage=n=>{currentPage=n;render();requestAnimationFrame(()=>$('list')?.scrollIntoView({block:'start'}))};
+
+$('search').addEventListener('input',()=>{currentPage=1;render()});
 window.filterByText=text=>{$('search').value=String(text||'');activeTag='';currentPage=1;showHome({preserve:true});render();requestAnimationFrame(()=>$('list')?.scrollIntoView({block:'start'}))};
 
 
@@ -1105,7 +1132,7 @@ window.deleteWork=async id=>{
  }
 };
 window.removeBook=window.deleteWork;
-$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.17.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
+$('exportBtn').onclick=()=>{const blob=new Blob([JSON.stringify({version:8,exportedAt:new Date().toISOString(),books},null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='yomitsugi-backup-v0.18.0.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)};
 $('importFile').onchange=async e=>{try{const d=JSON.parse(await e.target.files[0].text());if(!Array.isArray(d.books))throw 0;books=d.books;migrate();render()}catch{alert('読み込みできませんでした')}};
 function showIntakeDebug(){
  const el=$('intakeDebug'); if(!el)return;
@@ -1356,11 +1383,14 @@ async function loadLibraryFromD1({quiet = false} = {}) {
   }
 
   setDbStatus('D1読込中…');
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const response = await fetch(YOMITSUGI_API + '/library', {
       method: 'GET',
-      headers: {'Authorization': 'Bearer ' + token}
+      headers: {'Authorization': 'Bearer ' + token},
+      signal: controller.signal
     });
 
     const data = await response.json().catch(() => ({}));
@@ -1383,9 +1413,12 @@ async function loadLibraryFromD1({quiet = false} = {}) {
 
     return {ok:true, count:data.books.length};
   } catch (error) {
-    setDbStatus('D1接続エラー');
-    if (!quiet) showToast('D1を読めなかったので端末データを表示中');
-    return {ok:false, error:String(error?.message || error)};
+    const timedOut = error?.name === 'AbortError';
+    setDbStatus(timedOut ? 'D1タイムアウト・端末データ表示中' : 'D1接続エラー・端末データ表示中');
+    if (!quiet) showToast(timedOut ? 'D1の応答が遅いので端末データを表示中' : 'D1を読めなかったので端末データを表示中');
+    return {ok:false, error:timedOut ? '15秒でタイムアウトしました' : String(error?.message || error)};
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -1436,7 +1469,22 @@ $('dbReloadBtn').onclick = async () => {
     : '再読み込みできませんでした。\n' + (loaded.error || '');
   if(loaded.ok)setTimeout(()=>$('dbConnectDialog').close(),180);
 };
-$('dbQuickReloadBtn').onclick=()=>location.reload();
+$('dbQuickReloadBtn').onclick=async()=>{
+  const btn=$('dbQuickReloadBtn');
+  if(btn?.classList.contains('syncing'))return;
+  btn?.classList.add('syncing');
+  try{
+    if(getD1Token()){
+      const result=await loadLibraryFromD1({quiet:true});
+      showToast(result.ok?'最新データに更新したよ':'更新できなかったので端末データのまま表示中');
+    }else{
+      render();
+      showToast('端末データを更新したよ');
+    }
+  }finally{
+    btn?.classList.remove('syncing');
+  }
+};
 
 $('dbDisconnectBtn').onclick = () => {
   localStorage.removeItem(D1_TOKEN_KEY);
